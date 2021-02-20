@@ -1,4 +1,5 @@
-	#include <xc.inc>
+	; #include <xc.inc>
+#include <pic18_chip_select.inc>
 
 psect	code, abs
 	
@@ -8,9 +9,9 @@ main:
 
 	org	0x100		    ; Main code starts here at address 0x100
 start:
-	movlw   0xFF                ; Move 0xFF to W
+	movlw   0x02                ; Move 0xFF to W
 	movwf   0x20, A             ; Store 0xFF in FR 0x20
-	movwf   0xA, A
+	movlw   0x02
 	movwf   0x30, A             ; Store 0xA in FR 0x30 for second loop condition
 	movlw 	0x0 
 	movwf	TRISC, A	    ; Port C all outputs
@@ -33,6 +34,6 @@ test:
 	movlw   0xFF                ; move FF to working register
 	cpfsgt 	0x06, A
 	bra 	loop		    ; Not yet finished goto start of loop again
-	goto 	0x0		    ; Re-run program from start
+	; goto 	0x0		    ; Re-run program from start
 
 	end	main
