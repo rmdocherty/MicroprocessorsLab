@@ -78,10 +78,10 @@ start:
         movwf   PORTD               ; Move value of 0x20 to PORTD - RD0-RD3 high
 	movlw   0x10
  	movwf   0x20		    ; Move 0xFF to 0x20 - the delay timer = 250 ns
-	movlw   0x01                ; Move 0x01 to W
+	movlw   0x03                ; Move 0x01 to W
 	movwf   0x30                ; Move 0x01 to 0x30 - this is the data to be written to one byte of memory
-	movlw   0x40                ; Move 0x01 to W
-	movwf   0x40                ; Move 0x01 to 0x30 - this is the data to be written to one byte of memory
+	movlw   0x40                ; Move 0x40 to W
+	movwf   0x40                ; Move 0x40 to 0x40 - this is the read delay
 	call    write1
 	
 	; call    sendCp1
