@@ -7,97 +7,80 @@ main:
 	goto	start
 
 	org	0x100		    ; Main code starts here at address 0x100
-	
-setPullUps:
-        setf    TRISE               ; Tri-state PORTE
-	banksel PADCFG1             ; PADCFG1 not in access bank
-	bsf     REPU                ; PORTE pull ups on
-	movlb   0x00                ; BSR back to bank 0
-	return
 
-sendCp1:                        ; Send a pulse along Cp1 to signal a write operation
-        movlw   0x4                 ; Want to flip bit 2 of PORTD 
-	xorwf   PORTD               ; XOR 0x4 w/ PORTD FR to negate 2nd bit and keep other bits the same (i.e EO states)
+SPI_MasterInit:
+	bcf     CKE                 ; CKE bit in  SSP2STAT
+	; MSSP enable, CKP=1, SPI_Master, clock=osc/64 (1MHz)
+	movlw   (SSP2CON1_SSPEN_MASK)|(SSP2CON1_CKP_MASK)|(SSP2CON1_SSPM1_MASK)
+	movwf   SSP2CON1, A
+	bcf     TRISD, PORTD_SDO2_POSN, A  ; SD02 output
+	bcf     TRISD, PORTD_SCK2_POSN, A  ; SCK2 output
+	return
+waitTransmit:
+        btfss   SSP2IF              ; Check interrupt flag to see if data sent yet
+	bra     waitTransmit	    ; Loop back if not
+	bcf     SSP2IF		    ; Rest interrupt flag
+	return
+	
+resetLEDS:                   ; Send a pulse (high->low->high) along MR to reset extrenal bit register
+        movlw   0x0                 ; Want to flip bit 0 of PORTD off 
+	movwf   PORTE               
 	call    delay
-        movlw   0x4                 ; Want to flip bit 2 of PORTD 
-	xorwf   PORTD               ; XOR 0x4 w/ PORTD FR to negate 2nd bit and keep other bits the same (i.e EO states)
+        movlw   0x1                 ; Want to flip bit 0 of PORTD on
+	movwf   PORTE               
 	return
-sendCp2:                        ; Send a pulse along Cp2 to signal a write operation
-        movlw   0x8                 ; Want to flip bit 3 of PORTD 
-	xorwf   PORTD               ; XOR 0x8 w/ PORTD FR to negate 3rd bit and keep other bits the same (i.e EO states)
-	call    delay               ; Should make delay 250ns if possible
-        movlw   0x8                 ; Want to flip bit 3 of PORTD 
-	xorwf   PORTD               ; XOR 0x8 w/ PORTD FR to negate 2nd bit and keep other bits the same (i.e EO states)
-	return
-write1:
-	clrf    TRISE               ; Port E all outputs
-        movff   0x30, LATE          ; Write the data we want (assumed to be saved @ 0x30) to LATE
-	call    sendCp1             ; Send a clock pulse to mem 1 
-	call    setPullUps          ; Set PORTE to Tristate again
-	return
-write2:
-	clrf    TRISE               ; Port E all outputs
-        movff   0x30, LATE          ; Write the data we want (assumed to be saved @ 0x30) to LATE
-	call    sendCp2             ; Send a clock pulse to mem 2 
-	call    setPullUps          ; Set PORTE to Tristate again
-	return
-	return
-delay:                              ; Delay by decrementing value @ 0x20 N times
+delay:                       ; Delay by decrementing value @ 0x20 N times
         decfsz  0x20, A             ; Check if 0
 	bra     delay               ; If not loop back
-	movlw   0x10                ; Reset loop counter here
+	movlw   0xFF                ; Reset loop counter here
 	movwf   0x20          
-	return                      ; Jump back to execution
-	
-read1:                          ; Toggle value at E01, i.e switch between read (0)/write (1)
-        movlw   0xF                 ; We don't care about Cp1:2 and we want OE2 to be high (no collision!)
-	movwf   PORTD               ; Reset PORTD before changing EO1 - this ensures EO1 and EO2 aren't low @ same time
-        movlw   0xE                 ; All pins H except RD0 = EO1
-	movwf   PORTD               ; Move this to PORTD
-	call    readDelay
-	movff   PORTE, PORTC        ; Light up PORT H with the read pattern
-	movlw   0xF                 ; We don't care about Cp1:2 and we want OE2 to be high (no collision!)
-	movwf   PORTD               ; Reset PORTD before changing EO1 - this ensures EO1 and EO2 aren't low @ same time
-	return
-read2:                          ; Toggle value at E02, i.e switch between read (0)/write (1)
-	movlw   0xF                 ; We don't care about Cp1:2 and we want OE2 to be high (no collision!)
-	movwf   PORTD               ; Reset PORTD before changing EO1 - this ensures EO1 and EO2 aren't low @ same time
-        movlw   0xD                 ; All pins H except RD1 = EO2
-	movwf   PORTD               ; Move this to PORTD
-	call    readDelay
-	movff   PORTE, PORTH        ; Light up PORT H with the read pattern
-	movlw   0xF                 ; We don't care about Cp1:2 and we want OE2 to be high (no collision!)
-	movwf   PORTD               ; Reset PORTD before changing EO1 - this ensures EO1 and EO2 aren't low @ same time
-readDelay:
+	return                      ; Jump back to execution	
+delay2:			    ; Nested loop delay, calls previous delay method
+	call    delay               ; Inner loop delay
+        decfsz  0x30, A             ; Check if 0
+	bra     delay2              ; If not loop back
+	movlw   0xFF                ; Reset loop counter here
+	movwf   0x30          
+	return                      ; Jump back to execution    
+delay3:			    ; Triple loop delay so pattersn visible
+	call    delay2               ; Inner loop delay
         decfsz  0x40, A             ; Check if 0
- 	bra     readDelay           ; If not loop back
-	movlw   0x05                ; Reset loop counter here
+	bra     delay3              ; If not loop back
+	movlw   0xFF                ; Reset loop counter here
 	movwf   0x40          
-	return                      ; Jump back to execution
-	
+	return                      ; Jump back to execution  
 start:
-	call    setPullUps          ; Set PORTE tristate; set Pullups
-	clrf	TRISD   	    ; Port D all outputs
-	movlw   0xF                 ; Move 0xF to W
-        movwf   PORTD               ; Move value of 0xF to PORTD - RD0-RD3 high
-	clrf    TRISC
-	clrf    TRISH
-
-	movlw   0x10
- 	movwf   0x20		    ; Move 0x10 to 0x20 - the delay timer = 250 ns
-	movlw   0x05                ; Move 0x05 to W
-	movwf   0x40	            ; Move 0x05 to 0x40 - this is the read delay timer
-
-memoryTest:
-    	movlw   0x9D                ; Move 0x9D to W
-	movwf   0x30                ; Move 0x9D to 0x30 - this is the data to be written to one byte of memory
-	call    write1             ; Write value @ 0x30 to mem 1
-	movlw   0x81               ; Different pattern saved to mem 2
-	movwf   0x30               ; Overwrite 0x30 for mem 2 patter
-	call    write2             ; Write value @ 0x30 to mem 2
+	movlw   0xFF                ; Short delay length
+	movwf   0x20                ; Short delay memory addr
+	movlw   0xFF                ; Delay 2 length
+	movwf   0x30                ; Delay 2 memory addr
+	movlw   0xFF		    ; Delay 3 length
+	movlw   0x40		    ; Delay 3 memory addr
 	
-	setf    TRISE               ; Disable PORTE output
+	movlw   0x0		    ; Port E all output
+	movwf   TRISE, A
+	movlw   0x1		    ; We want MR pin high at all times except when resetting
+	movwf   PORTE
+	call    SPI_MasterInit	    ; Initialise SPI
 	
-	call    read1               ; Read data from mem 1 and write to PORTC - should BE 0x9D
-	call    read2               ; Read data from mem 2 and write to PORTH - should have number 0x81
-	end	main
+SPITest:		    ; NB The patterns are bit flipped - i.e dark = 1 light = 0
+	movlw   0x44		    ; Pattern 1
+	movwf   SSP2BUF, A	    ; Throw into SSP buffer
+	call    waitTransmit	    ; Transmit to 174
+	call    delay3		    ; Wait with 3 level cascaded delay
+	
+	call    resetLEDS	    ; Reset the pattern
+	
+	movlw   0x33		    ; Pattern 2
+	movwf   SSP2BUF, A
+	call    waitTransmit	
+	call    delay3
+	
+	call    resetLEDS
+	
+	movlw   0xD9		    ; Pattern 3
+	movwf   SSP2BUF, A
+	call    waitTransmit	
+	call    delay3
+	
+	end     main
