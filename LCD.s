@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-global  LCD_Setup, LCD_Write_Message
+global  LCD_Setup, LCD_Write_Message, LCD_Clear_screen, LCD_Change_level
 
 psect	udata_acs   ; named variables in access ram
 LCD_cnt_l:	ds 1   ; reserve 1 byte for variable LCD_cnt_l
@@ -54,7 +54,19 @@ LCD_Loop_message:
 	decfsz  LCD_counter, A
 	bra	LCD_Loop_message
 	return
-
+LCD_Clear_screen:
+	movlw   0x01        ; From function table 0x01 is the clear screen
+	call    LCD_Send_Byte_I  ; Send this byte to the instruction register
+	return
+LCD_Change_level:
+	movlw   11100B
+	call    LCD_Send_Byte_I  ; Send this byte to the instruction register
+	return
+LCD_Disable_Cursor:
+	movlw   0x0C
+	call    LCD_Send_Byte_I  ; Send this byte to the instruction register
+	return
+	
 LCD_Send_Byte_I:	    ; Transmits byte stored in W to instruction reg
 	movwf   LCD_tmp, A
 	swapf   LCD_tmp, W, A   ; swap nibbles, high nibble goes first

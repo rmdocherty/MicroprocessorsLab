@@ -1,11 +1,13 @@
 #include <xc.inc>
 
 extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
-extrn	LCD_Setup, LCD_Write_Message
+extrn	LCD_Setup, LCD_Write_Message, LCD_Clear_screen, LCD_Change_level
 	
 psect	udata_acs   ; reserve data space in access ram
 counter:    ds 1    ; reserve one byte for a counter variable
 delay_count:ds 1    ; reserve one byte for counter in the delay routine
+second_delay_count: ds 1 ; reserve one byte for counter in the nested delay routine
+third_delay_count: ds 1
     
 psect	udata_bank4 ; reserve data anywhere in RAM (here at 0x400)
 myArray:    ds 0x80 ; reserve 128 bytes for message data
@@ -17,8 +19,10 @@ myTable:
 					; message, plus carriage return
 	myTable_l   EQU	13	; length of data
 	align	2
-    
+ 
+	
 psect	code, abs	
+	
 rst: 	org 0x0
  	goto	setup
 
@@ -52,12 +56,55 @@ loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
 	addlw	0xff		; don't send the final carriage return to LCD
 	lfsr	2, myArray
 	call	LCD_Write_Message
-
+	
+	movlw   0xFF
+	movwf   delay_count
+	movlw   0xFF
+	movwf   second_delay_count
+	movlw   0xAA
+	movwf   third_delay_count ; triple nested delay
+	call    delay3
+	call    LCD_Clear_screen  ; clear the screen
+	
+	
+	call    delay3
+	movlw	0x20
+	movwf	0x20
+	call	move_cursor
+	
+	movlw	myTable_l	; output message to LCD
+	addlw	0xff		; don't send the final carriage return to LCD
+	lfsr	2, myArray
+	call	LCD_Write_Message
+	
 	goto	$		; goto current line in code
 
 	; a delay subroutine if you need one, times around loop in delay_count
 delay:	decfsz	delay_count, A	; decrement until zero
 	bra	delay
 	return
-
+delay2: 
+        call    delay
+	movlw   0xFF
+	movwf   delay_count
+        decfsz  second_delay_count, A
+	bra     delay2
+	movlw   0xFF
+	movwf   second_delay_count
+	return
+delay3:
+        call    delay2
+	decfsz  third_delay_count, A
+	bra     delay3
+	movlw   0xFF
+	movwf   third_delay_count
+	return
+move_cursor:
+	call    LCD_Change_level
+	decfsz  0x20
+	bra     move_cursor
+	movlw   0x28
+	movwf   0x20
+	return
+	
 	end	rst
