@@ -1,7 +1,8 @@
 #include <xc.inc>
 
 extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
-extrn	LCD_Setup, LCD_Write_Message, LCD_Clear_screen, LCD_Change_level, LCD_Send_Byte_D
+extrn	LCD_Setup, LCD_Write_Message, LCD_Clear_screen, LCD_Change_level, LCD_Send_Byte_D, LCD_Write_Hex
+extrn	ADC_Setup, ADC_Read		   ; external ADC subroutines
 extrn   Keypad_master
 global  delay3, delay2, delay
     
@@ -34,6 +35,7 @@ setup:	bcf	CFGS	; point to Flash program memory
 	bsf	EEPGD 	; access Flash program memory
 	call	UART_Setup	; setup UART
 	call	LCD_Setup	; setup UART
+	call	ADC_Setup	; setup ADC
 	goto	start
 
 loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
@@ -45,8 +47,8 @@ loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
 	lfsr	2, myArray
 	call	UART_Transmit_Message
 
-	movlw	myTable_l	; output message to LCD
-	addlw	0xff		; don't send the final carriage return to LCD
+	movlw	myTable_l-1	; output message to LCD
+				; don't send the final carriage return to LCD
 	lfsr	2, myArray
 	call	LCD_Write_Message
 	
@@ -84,6 +86,15 @@ start: 	lfsr	0, myArray	; Load FSR0 with address in RAM
 	movlw	myTable_l	; bytes to read
 	movwf 	counter, A		; our counter register
 	goto	get_input
+
+measure_loop:
+	call	ADC_Read
+	movf	ADRESH, W, A
+	call	LCD_Write_Hex
+	movf	ADRESL, W, A
+	call	LCD_Write_Hex
+	goto	measure_loop		; goto current line in code
+	
 
 	; a delay subroutine if you need one, times around loop in delay_count
 delay:	decfsz	delay_count, A	; decrement until zero
