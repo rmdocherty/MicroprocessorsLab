@@ -16,9 +16,7 @@
       <itemPath>main.s</itemPath>
       <itemPath>UART.s</itemPath>
       <itemPath>LCD.s</itemPath>
-      <itemPath>ACD.s</itemPath>
-      <itemPath>Keypad.s</itemPath>
-      <itemPath>Multiplication.s</itemPath>
+      <itemPath>GLCD.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
