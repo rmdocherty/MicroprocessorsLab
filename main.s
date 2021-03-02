@@ -85,14 +85,18 @@ start: 	lfsr	0, myArray	; Load FSR0 with address in RAM
 	movwf	TBLPTRL, A		; load low byte to TBLPTRL
 	movlw	myTable_l	; bytes to read
 	movwf 	counter, A		; our counter register
-	goto	get_input
-
+	;goto	get_input
+	goto	measure_loop
+	
 measure_loop:
-	call	ADC_Read
+	call	ADC_Read		; read value from board ACD
 	movf	ADRESH, W, A
-	call	LCD_Write_Hex
+	call	LCD_Write_Hex		; write the hex for upper part
 	movf	ADRESL, W, A
-	call	LCD_Write_Hex
+	call	LCD_Write_Hex		; write hex from lower
+	call	delay3			; delay so enough time to read screen
+	call	LCD_Clear_screen	; clear screen for next measurement
+	call	delay2			; slight delay for LCD
 	goto	measure_loop		; goto current line in code
 	
 
@@ -113,7 +117,7 @@ delay3:			; triple nested delay
         call    delay2
 	decfsz  third_delay_count, A
 	bra     delay3
-	movlw   0x03	; chosen s.t a single normal press won't trigger twice 
+	movlw   0x80	; chosen s.t a single normal press won't trigger twice 
 	movwf   third_delay_count
 	return
 move_cursor:	; assuming the position you want to jump to is in WREG
