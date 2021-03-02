@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-global	GLCD_Setup
+global	GLCD_Setup, GLCD_Draw
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -28,7 +28,7 @@ GLCD_E	    EQU 4	; GLCD enable bit
 GLCD_RST    EQU 5	; GLCD reset bit
 COL_WIDTH   EQU 64
     	
-;   Control on PORTB, Data on PORTD, read in on TRISD
+;   Control on LATB, Data on PORTD, read in on TRISD
 psect	glcd_code,class=CODE
 
 GLCD_delay_x4us:		    ; delay given in chunks of 4 microsecond in W
@@ -60,38 +60,38 @@ glcdlp2:	movlw	250	    ; 1 ms delay
     	
 	
 GLCD_Enable_Pulse:
-	bsf	PORTB, GLCD_E, A    ; Set enable bit high on PORTE (maybe should be LATE)?
+	bsf	LATB, GLCD_E, A    ; Set enable bit high on PORTE (maybe should be LATE)?
 	movlw	0x01		    ; 4 us delay (should be 5, maybe ok)
 	call	GLCD_delay_x4us
-	bcf	PORTB, GLCD_E, A    ; Set enable bit low on PORTE
+	bcf	LATB, GLCD_E, A    ; Set enable bit low on PORTE
 	movlw	0x01		    ; Another 4 us delay
 	call	GLCD_delay_x4us	
 	return
    
 GLCD_On:			    ; Turn on display
-	bcf	PORTB, GLCD_CS1, A  
-	bcf	PORTB, GLCD_CS2, A
-	bcf	PORTB, GLCD_RS, A   ; RS being low means it's a command
-	bcf	PORTB, GLCD_RW, A   ; R/W low means write
+	bcf	LATB, GLCD_CS1, A  
+	bcf	LATB, GLCD_CS2, A
+	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
+	bcf	LATB, GLCD_RW, A   ; R/W low means write
 	movlw	0x3F		    ; Hex for on command
 	movwf	PORTD		    ; Move to data
-	call GLCD_Enable_Pulse	    ; Pulse
+	call	GLCD_Enable_Pulse	    ; Pulse
 	return
 
 GLCD_Set_Col:			    ; Given value in W go set that x value in GLCD
 	movwf	Col_index	    ; Store WREG in Col_index
-	bcf	PORTB, GLCD_RS, A   ; RS being low means it's a command
-	bcf	PORTB, GLCD_RW, A   ; R/W low means write
+	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
+	bcf	LATB, GLCD_RW, A   ; R/W low means write
 	cpfsgt	COL_WIDTH, A	    ; if x > 64 goto RHS, else goto LHS
 	goto	LHS		    ; switch statement
 	goto	RHS
 LHS:
-	bcf	PORTB, GLCD_CS1, A  ; CS1 = 0, select chip 1
-	bsf	PORTB, GLCD_CS2, A  ; CS2 = 1, deselect chip 2
+	bcf	LATB, GLCD_CS1, A  ; CS1 = 0, select chip 1
+	bsf	LATB, GLCD_CS2, A  ; CS2 = 1, deselect chip 2
 	goto	Set_Col_Finish
 RHS:
-	bsf	PORTB, GLCD_CS1, A  ; CS1 = 1
-	bcf	PORTB, GLCD_CS2, A  ; CS2 = 0
+	bsf	LATB, GLCD_CS1, A  ; CS1 = 1
+	bcf	LATB, GLCD_CS2, A  ; CS2 = 0
 	movlw	64
 	subwf	Col_index, 1, 0	    ; Col_index - 64 stored to col_index
 	goto	Set_Col_Finish
@@ -106,8 +106,8 @@ Set_Col_Finish:
 GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	movwf	Row_index
 	
-	bcf	PORTB, GLCD_RS, A   ; RS being low means it's a command
-	bcf	PORTB, GLCD_RW, A   ; R/W low means write
+	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
+	bcf	LATB, GLCD_RW, A   ; R/W low means write
 	
 	movlw	0xB8
 	iorwf	Row_index, 1, 0
@@ -117,8 +117,8 @@ GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	return
 	
 GLCD_Write:			    ; Write byte in WREG to GLCD
-	bsf	PORTB, GLCD_RS, A   ; RS being high means it's data
-	bcf	PORTB, GLCD_RW, A   ; R/W low means write
+	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
+	bcf	LATB, GLCD_RW, A   ; R/W low means write
 	movwf	PORTD		    ; put data on PORTD to write
 	movlw	0x01		    
 	call	GLCD_delay_x4us	    ; 1 us delay
@@ -127,35 +127,35 @@ GLCD_Write:			    ; Write byte in WREG to GLCD
 
 GLCD_Read:			    ; given column to read in WREG, read that data and store in read_byte
 	setf	TRISD, A	    ; PORTD as input
-	bsf	PORTB, GLCD_RS, A   ; RS being high means it's data
-	bcf	PORTB, GLCD_RW, A   ; R/W high means read
+	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
+	bcf	LATB, GLCD_RW, A   ; R/W high means read
 	cpfsgt	COL_WIDTH, A	    ; if x > 64 skip
 	goto	Read_CS1
 	goto	Read_CS2
 Read_CS1:
-	bcf	PORTB, GLCD_CS1	    ; CS1 low to be read
-	bsf	PORTB, GLCD_CS2	    ; CS2 high
+	bcf	LATB, GLCD_CS1	    ; CS1 low to be read
+	bsf	LATB, GLCD_CS2	    ; CS2 high
 	goto	Read_Finish
 Read_CS2:
-	bsf	PORTB, GLCD_CS1	    ; CS1 high
-	bcf	PORTB, GLCD_CS2	    ; CS2 low to be read
+	bsf	LATB, GLCD_CS1	    ; CS1 high
+	bcf	LATB, GLCD_CS2	    ; CS2 low to be read
 	goto	Read_Finish
 Read_Finish:
 	movlw	0x01
 	call	GLCD_delay	; should be 1 us not 4!
-	bsf	PORTB, GLCD_E	; latch RAM data into output register
+	bsf	LATB, GLCD_E	; latch RAM data into output register
 	movlw	0x01
 	call	GLCD_delay	; should be 1 us not 4!
 	
-	bcf	PORTB, GLCD_E	; pulse the enable bit on portb
+	bcf	LATB, GLCD_E	; pulse the enable bit on portb
 	movlw	0x01
 	call	GLCD_delay	; should be 5 us
-	bsf	PORTB, GLCD_E	
+	bsf	LATB, GLCD_E	
 	movlw	0x01
 	call	GLCD_delay	; should be 5 us
 	
 	movff	PORTD, read_byte; data now stored in read_byte
-	bcf	PORTB, GLCD_E
+	bcf	LATB, GLCD_E
 	movlw	0x01
 	call	GLCD_delay	; should be 1 us
 	
@@ -225,18 +225,23 @@ GLCD_Setup:
 	
 	clrf	TRISB
 	clrf	TRISD
-	clrf	PORTB
+	clrf	LATB
 	clrf	PORTD
-	bsf	PORTB, GLCD_CS1
-	bsf	PORTB, GLCD_CS2
-	bsf	PORTB, GLCD_RST
+	bsf	LATB, GLCD_CS1
+	bsf	LATB, GLCD_CS2
+	bsf	LATB, GLCD_RST
 	call	GLCD_On
-	
-	movlw	0
+	return
+
+GLCD_Draw:
+	movlw	128
 	movwf	x
-	movlw	0
+	movlw	100
 	movwf	y
 	setf	colour
 	call	GLCD_Draw_Pixel
 	movlw	1000
 	call	GLCD_delay_ms
+	movlw	1000
+	goto	GLCD_Draw   
+	return

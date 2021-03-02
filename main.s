@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-extrn	GLCD_Setup  
+extrn	GLCD_Setup, GLCD_Draw
     
 psect	udata_acs
 delay_count:	ds 1
@@ -13,5 +13,6 @@ rst: 	org 0x0
 
 main:
 	call	GLCD_Setup
+	call	GLCD_Draw
 	end	rst
 
