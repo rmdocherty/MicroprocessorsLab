@@ -5,6 +5,7 @@ global	GLCD_Setup, GLCD_Draw
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
 GLCD_cnt_h:	ds 1	; reserve 1 byte for variable LCD_cnt_h
+GLCD_cnt_2:	ds 1
 GLCD_cnt_ms:	ds 1	; reserve 1 byte for ms counter
 Col_index:	ds 1	; What col do we want to go to
 Row_index:	ds 1
@@ -16,6 +17,8 @@ write_byte:	ds 1	; Variable to write data to GLCD
 temp_div:	ds 1	; Variable to store number divided by 8 in
 temp_mod:	ds 1	; Variable to store mod in 
 shift_counter:	ds 1	; Variable to count # of shifts
+Clear_cnt:	ds 1	; Variable to loop clear line over
+Clear_cnt_2:	ds 1	; Variable to loop clear screen over
   
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
 
@@ -26,11 +29,18 @@ GLCD_RS	    EQU 2	; GLCD register select bit
 GLCD_RW	    EQU 3	; GLCD R/W bit
 GLCD_E	    EQU 4	; GLCD enable bit
 GLCD_RST    EQU 5	; GLCD reset bit
-COL_WIDTH   EQU 64
+COL_WIDTH   EQU 63
     	
 ;   Control on LATB, Data on PORTD, read in on TRISD
 psect	glcd_code,class=CODE
 
+GLCD_delay_1us:
+	decfsz	GLCD_cnt_2
+	bra	GLCD_delay_1us
+	movlw	0x0F
+	movwf	GLCD_cnt_2
+	return
+   
 GLCD_delay_x4us:		    ; delay given in chunks of 4 microsecond in W
 	movwf	GLCD_cnt_l, A	    ; now need to multiply by 16
 	swapf   GLCD_cnt_l, F, A    ; swap nibbles
@@ -52,7 +62,8 @@ glcdlp1:
 
 GLCD_delay_ms:		    ; delay given in ms in W
 	movwf	GLCD_cnt_ms, A
-glcdlp2:	movlw	250	    ; 1 ms delay
+glcdlp2:	
+	movlw	250	    ; 1 ms delay
 	call	GLCD_delay_x4us	
 	decfsz	GLCD_cnt_ms, A
 	bra	glcdlp2
@@ -63,9 +74,11 @@ GLCD_Enable_Pulse:
 	bsf	LATB, GLCD_E, A    ; Set enable bit high on PORTE (maybe should be LATE)?
 	movlw	0x01		    ; 4 us delay (should be 5, maybe ok)
 	call	GLCD_delay_x4us
+	call	GLCD_delay_1us
 	bcf	LATB, GLCD_E, A    ; Set enable bit low on PORTE
 	movlw	0x01		    ; Another 4 us delay
 	call	GLCD_delay_x4us	
+	call	GLCD_delay_1us
 	return
    
 GLCD_On:			    ; Turn on display
@@ -82,7 +95,7 @@ GLCD_Set_Col:			    ; Given value in W go set that x value in GLCD
 	movwf	Col_index	    ; Store WREG in Col_index
 	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
 	bcf	LATB, GLCD_RW, A   ; R/W low means write
-	cpfsgt	COL_WIDTH, A	    ; if x > 64 goto RHS, else goto LHS
+	cpfsgt	COL_WIDTH, A	    ; if x > 64 goto RHS, else goto LHS MIGHT BE WRONG
 	goto	LHS		    ; switch statement
 	goto	RHS
 LHS:
@@ -92,14 +105,15 @@ LHS:
 RHS:
 	bsf	LATB, GLCD_CS1, A  ; CS1 = 1
 	bcf	LATB, GLCD_CS2, A  ; CS2 = 0
-	movlw	64
+	movlw	0x40
 	subwf	Col_index, 1, 0	    ; Col_index - 64 stored to col_index
 	goto	Set_Col_Finish
 Set_Col_Finish:
 	movlw	0x40
 	iorwf	Col_index, 1, 0
-	movlw	0xBF
+	movlw	0x7F
 	andwf	Col_index, 1, 0	    ; This puts the value in WREG of column into command format
+	movff	Col_index, PORTD    ; Move this to data before pulse
 	call	GLCD_Enable_Pulse
 	return
 
@@ -113,6 +127,7 @@ GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	iorwf	Row_index, 1, 0
 	movlw	0xBF
 	andwf	Row_index, 1, 0	    ; This puts the value in WREG of column into command format
+	movff	Row_index, PORTD    ; Move this to data before pulse
 	call	GLCD_Enable_Pulse
 	return
 	
@@ -120,8 +135,7 @@ GLCD_Write:			    ; Write byte in WREG to GLCD
 	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
 	bcf	LATB, GLCD_RW, A   ; R/W low means write
 	movwf	PORTD		    ; put data on PORTD to write
-	movlw	0x01		    
-	call	GLCD_delay_x4us	    ; 1 us delay
+	call	GLCD_delay_1us	    ; 4 NOP = 1 us delay
 	call	GLCD_Enable_Pulse
 	return
 
@@ -141,24 +155,28 @@ Read_CS2:
 	bcf	LATB, GLCD_CS2	    ; CS2 low to be read
 	goto	Read_Finish
 Read_Finish:
-	movlw	0x01
-	call	GLCD_delay	; should be 1 us not 4!
-	bsf	LATB, GLCD_E	; latch RAM data into output register
-	movlw	0x01
-	call	GLCD_delay	; should be 1 us not 4!
+	;movlw	0x01
+	;call	GLCD_delay	; should be 1 us not 4!
+	call	GLCD_delay_1us
+	bsf	LATB, GLCD_E	; latch RAM data into output register - dummy read
+	call	GLCD_delay_1us
+	;movlw	0x01
+	;call	GLCD_delay	; should be 1 us not 4!
 	
 	bcf	LATB, GLCD_E	; pulse the enable bit on portb
 	movlw	0x01
 	call	GLCD_delay	; should be 5 us
+	call	GLCD_delay_1us
 	bsf	LATB, GLCD_E	
-	movlw	0x01
-	call	GLCD_delay	; should be 5 us
+	call	GLCD_delay_1us
+	;movlw	0x01
+	;call	GLCD_delay	; should be 5 us
 	
 	movff	PORTD, read_byte; data now stored in read_byte
 	bcf	LATB, GLCD_E
-	movlw	0x01
-	call	GLCD_delay	; should be 1 us
-	
+	;movlw	0x01
+	;call	GLCD_delay	; should be 1 us
+	call	GLCD_delay_1us
 	clrf	TRISD		; Set PORTD to be output again
 	return
 
@@ -220,9 +238,41 @@ Write_Finish:
 	movf	write_byte
 	call	GLCD_Write
 	return
+
+GLCD_Clear_Line:
+	call	GLCD_Set_Row
+	movlw	0x40
+	call	GLCD_Set_Col
+	bsf	LATB, GLCD_CS1
+	movlw	0x40
+	movwf	Clear_cnt
+Clear_loop:
+	movlw	0x00
+	call	GLCD_Write
+	decfsz	Clear_cnt
+	goto	Clear_loop
+	return
+	
+GLCD_Clear_Screen:
+	movf	Clear_cnt_2
+	call	GLCD_Clear_Line
+	decfsz	Clear_cnt_2
+	goto	GLCD_Clear_Screen
+	movlw	0x08
+	movwf	Clear_cnt_2
+	return
+
+GLCD_Set_Line:			    ; Given line addr in WREG start line threre
+	bcf	LATB, GLCD_RS
+	bcf	LATB, GLCD_RW
+	bcf	LATB, GLCD_CS1
+	bcf	LATB, GLCD_CS2
+	movlw	0xC0		    ; Set line to 0, edit this later to use temp variale and any line addr
+	movwf	PORTD
+	call	GLCD_Enable_Pulse
+	return
 	
 GLCD_Setup:
-	
 	clrf	TRISB
 	clrf	TRISD
 	clrf	LATB
@@ -231,17 +281,23 @@ GLCD_Setup:
 	bsf	LATB, GLCD_CS2
 	bsf	LATB, GLCD_RST
 	call	GLCD_On
+	call	GLCD_Clear_Screen
+	movlw	0x0F
+	movwf	GLCD_cnt_2
+	call	GLCD_Set_Line
 	return
 
 GLCD_Draw:
-	movlw	128
+	movlw	1
 	movwf	x
-	movlw	100
+	movlw	1
 	movwf	y
-	setf	colour
+	clrf	colour
 	call	GLCD_Draw_Pixel
 	movlw	1000
+	;call	GLCD_Clear_Screen
 	call	GLCD_delay_ms
 	movlw	1000
+	
 	goto	GLCD_Draw   
 	return
