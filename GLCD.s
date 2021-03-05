@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test
+global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -89,11 +89,21 @@ GLCD_On:			    ; Turn on display
 	bcf	LATB, GLCD_CS2, A
 	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
 	bcf	LATB, GLCD_RW, A   ; R/W low means write
-	movlw	0x3F		    ; Hex for on command
+	movlw	0x3F		    ; Hex for on command (last bit = D = 1)
 	movwf	PORTD		    ; Move to data
 	call	GLCD_Enable_Pulse	    ; Pulse
 	return
-
+	
+GLCD_Off:			    ; Turn off display
+	bcf	LATB, GLCD_CS1, A  
+	bcf	LATB, GLCD_CS2, A
+	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
+	bcf	LATB, GLCD_RW, A   ; R/W low means write
+	movlw	0x3E		    ; Hex for on command
+	movwf	PORTD		    ; Move to data
+	call	GLCD_Enable_Pulse	    ; Pulse
+	return
+	
 GLCD_Set_Col:			    ; Given value in W go set that x value in GLCD
 	movwf	Col_index	    ; Store WREG in Col_index
 	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
