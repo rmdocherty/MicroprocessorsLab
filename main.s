@@ -13,7 +13,7 @@ rst: 	org 0x0
 
 main:
 	call	GLCD_Setup
-	;call	GLCD_Test
+	call	GLCD_Test
 	call	GLCD_Draw
 	end	rst
 

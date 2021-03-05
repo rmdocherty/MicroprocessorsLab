@@ -123,8 +123,8 @@ Set_Col_Finish:
 GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	movwf	Row_index
 	
-	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
-	bcf	LATB, GLCD_RW, A   ; R/W low means write
+	bcf	LATB, GLCD_RS, A    ; RS being low means it's a command
+	bcf	LATB, GLCD_RW, A    ; R/W low means write
 	
 	movlw	0xB8
 	iorwf	Row_index, 1, 0
@@ -135,8 +135,8 @@ GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	return
 	
 GLCD_Write:			    ; Write byte in WREG to GLCD
-	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
-	bcf	LATB, GLCD_RW, A   ; R/W low means write
+	bsf	LATB, GLCD_RS, A    ; RS being high means it's data
+	bcf	LATB, GLCD_RW, A    ; R/W low means write
 	movwf	PORTD		    ; put data on PORTD to write
 	call	GLCD_delay_1us	    ; 4 NOP = 1 us delay
 	call	GLCD_Enable_Pulse
@@ -144,14 +144,14 @@ GLCD_Write:			    ; Write byte in WREG to GLCD
 
 GLCD_Read:			    ; given column to read in WREG, read that data and store in read_byte
 	setf	TRISD, A	    ; PORTD as input
-	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
-	bsf	LATB, GLCD_RW, A   ; R/W high means read
+	bsf	LATB, GLCD_RS, A    ; RS being high means it's data
+	bsf	LATB, GLCD_RW, A    ; R/W high means read
 	
 	call	GLCD_delay_1us
-	bsf	LATB, GLCD_E	; latch RAM data into output register - dummy read
+	bsf	LATB, GLCD_E	    ; latch RAM data into output register - dummy read
 	call	GLCD_delay_1us
 	
-	bcf	LATB, GLCD_E	; pulse the enable bit on portb
+	bcf	LATB, GLCD_E	    ; pulse the enable bit on portb
 	movlw	0x01
 	call	GLCD_delay	; should be 5 us
 	call	GLCD_delay_1us
@@ -181,7 +181,7 @@ mod_to_pattern:			; Given value in mod_8, return byte with kth bit on
 	movlw	0x01
 	movwf	temp_pattern
 pattern_loop:
-	rlncf	temp_pattern
+	rlncf	temp_pattern	; rotate 0x01 left temp_mod times to go from 0xk -> 0k000000B
 	decfsz	temp_mod
 	goto	pattern_loop
 	return
@@ -194,18 +194,25 @@ GLCD_Draw_Pixel:
 	movf	temp_div, 0, 1
 	call	GLCD_Set_Row	
 	
-	;call	GLCD_Read	; get the data out from x,y
-	;movf	read_byte	; move read byte into WREG
+	call	GLCD_Read	; get the data out from x,y
+	movf	read_byte, 0, 1	; move read byte into WREG
+	movwf	write_byte	; move read byte into the byte to write - this is to avoid overwriting neighbouring pixels
+	
+	movf	x, 0, 1		; have to set where we're going to write to again!
+	call	GLCD_Set_Col	
+	movf	y, 0, 1	
+	call	div_by_8	; Divide y by 8 and have result in temp_div
+	movf	temp_div, 0, 1
+	call	GLCD_Set_Row
 	
 	movf	y, 0, 1	
 	call	mod_8		; calculate mod_8 of y
 	
-	movlw	0x00
-	movwf	write_byte
-	call	mod_to_pattern
+	;movlw	0x00		; temporarily assume write_byte is 0x00 - need to make this the byte read so as not to overwrite stuff later
+	;movwf	write_byte
+	call	mod_to_pattern	; convert mod y to binary number with kth bit on
 	movf	temp_pattern, 0, 1
-	;movf	temp_mod, 0, 1
-	iorwf	write_byte
+	iorwf	write_byte	; ior this binary number with the write byte
 	
 	movf	write_byte, 0, 1
 	call	GLCD_Write
@@ -265,9 +272,9 @@ GLCD_Setup:
 	return
 
 GLCD_Draw:
-	movlw	100		    ; These don't matter just for testing
+	movlw	1		    ; These don't matter just for testing
 	movwf	x
-	movlw	63
+	movlw	2
 	movwf	y
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
@@ -279,13 +286,12 @@ GLCD_Draw:
 	return
 	
 GLCD_Test:
-	movlw	100
+	movlw	1
 	call	GLCD_Set_Col
-	movlw	5
+	movlw	0
 	call	GLCD_Set_Row
 	movlw	0xAA
 	call	GLCD_Write
 	movlw	1000
 	call	GLCD_delay_ms
-	goto	GLCD_Test
 	return
