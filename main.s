@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-extrn	GLCD_Setup, GLCD_Draw, GLCD_Off, GLCD_On, Int_Hi, Int_Setup, delay_long
+extrn	GLCD_Setup, GLCD_Draw, GLCD_Off, GLCD_On, Int_Hi, Int_Setup, delay_long,GLCD_Write, GLCD_Test
     
 psect	udata_acs
 delay_count:	ds 1
@@ -17,6 +17,7 @@ int_hi:
 main:
 	call	Int_Setup
 	call	GLCD_Setup
+	call	GLCD_Test
 	call	GLCD_Draw
 	call	delay_long
 	call	GLCD_Off

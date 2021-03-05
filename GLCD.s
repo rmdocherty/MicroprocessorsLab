@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-global	GLCD_Setup, GLCD_Draw, GLCD_On, GLCD_Off
+global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -16,9 +16,12 @@ read_byte:	ds 1	; Variable to read data in from GLCD
 write_byte:	ds 1	; Variable to write data to GLCD
 temp_div:	ds 1	; Variable to store number divided by 8 in
 temp_mod:	ds 1	; Variable to store mod in 
+temp_pattern:	ds 1
 shift_counter:	ds 1	; Variable to count # of shifts
 Clear_cnt:	ds 1	; Variable to loop clear line over
 Clear_cnt_2:	ds 1	; Variable to loop clear screen over
+Page_width:	ds 1	;Variable to hold half screen width
+ 
   
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
 
@@ -105,9 +108,9 @@ GLCD_Set_Col:			    ; Given value in W go set that x value in GLCD
 	movwf	Col_index	    ; Store WREG in Col_index
 	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
 	bcf	LATB, GLCD_RW, A   ; R/W low means write
-	cpfsgt	COL_WIDTH, A	    ; if x > 64 goto RHS, else goto LHS MIGHT BE WRONG
-	goto	LHS		    ; switch statement
-	goto	RHS
+	cpfsgt	Page_width, A	    ; if x > 63 goto RHS, else goto LHS 
+	goto	RHS		    ; switch statement
+	goto	LHS
 LHS:
 	bcf	LATB, GLCD_CS1, A  ; CS1 = 0, select chip 1
 	bsf	LATB, GLCD_CS2, A  ; CS2 = 1, deselect chip 2
@@ -130,8 +133,8 @@ Set_Col_Finish:
 GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	movwf	Row_index
 	
-	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
-	bcf	LATB, GLCD_RW, A   ; R/W low means write
+	bcf	LATB, GLCD_RS, A    ; RS being low means it's a command
+	bcf	LATB, GLCD_RW, A    ; R/W low means write
 	
 	movlw	0xB8
 	iorwf	Row_index, 1, 0
@@ -142,8 +145,8 @@ GLCD_Set_Row:			    ; Given value in WREG set that y addr in GLCD
 	return
 	
 GLCD_Write:			    ; Write byte in WREG to GLCD
-	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
-	bcf	LATB, GLCD_RW, A   ; R/W low means write
+	bsf	LATB, GLCD_RS, A    ; RS being high means it's data
+	bcf	LATB, GLCD_RW, A    ; R/W low means write
 	movwf	PORTD		    ; put data on PORTD to write
 	call	GLCD_delay_1us	    ; 4 NOP = 1 us delay
 	call	GLCD_Enable_Pulse
@@ -151,41 +154,22 @@ GLCD_Write:			    ; Write byte in WREG to GLCD
 
 GLCD_Read:			    ; given column to read in WREG, read that data and store in read_byte
 	setf	TRISD, A	    ; PORTD as input
-	bsf	LATB, GLCD_RS, A   ; RS being high means it's data
-	bcf	LATB, GLCD_RW, A   ; R/W high means read
-	cpfsgt	COL_WIDTH, A	    ; if x > 64 skip
-	goto	Read_CS1
-	goto	Read_CS2
-Read_CS1:
-	bcf	LATB, GLCD_CS1	    ; CS1 low to be read
-	bsf	LATB, GLCD_CS2	    ; CS2 high
-	goto	Read_Finish
-Read_CS2:
-	bsf	LATB, GLCD_CS1	    ; CS1 high
-	bcf	LATB, GLCD_CS2	    ; CS2 low to be read
-	goto	Read_Finish
-Read_Finish:
-	;movlw	0x01
-	;call	GLCD_delay	; should be 1 us not 4!
-	call	GLCD_delay_1us
-	bsf	LATB, GLCD_E	; latch RAM data into output register - dummy read
-	call	GLCD_delay_1us
-	;movlw	0x01
-	;call	GLCD_delay	; should be 1 us not 4!
+	bsf	LATB, GLCD_RS, A    ; RS being high means it's data
+	bsf	LATB, GLCD_RW, A    ; R/W high means read
 	
-	bcf	LATB, GLCD_E	; pulse the enable bit on portb
+	call	GLCD_delay_1us
+	bsf	LATB, GLCD_E	    ; latch RAM data into output register - dummy read
+	call	GLCD_delay_1us
+	
+	bcf	LATB, GLCD_E	    ; pulse the enable bit on portb
 	movlw	0x01
 	call	GLCD_delay	; should be 5 us
 	call	GLCD_delay_1us
 	bsf	LATB, GLCD_E	
 	call	GLCD_delay_1us
-	;movlw	0x01
-	;call	GLCD_delay	; should be 5 us
 	
 	movff	PORTD, read_byte; data now stored in read_byte
 	bcf	LATB, GLCD_E
-	;movlw	0x01
-	;call	GLCD_delay	; should be 1 us
 	call	GLCD_delay_1us
 	clrf	TRISD		; Set PORTD to be output again
 	return
@@ -194,82 +178,79 @@ div_by_8:			; given number in WREG, integer divide it by 8 store result in temp_
 	movwf	temp_div
 	rrncf	temp_div, 1, 0
 	rrncf	temp_div, 1, 0
-	rrncf	temp_div, 1, 0
-	return
+	rrncf	temp_div, 1, 0	; rrncf 3 times is same as dividnign by 8 in base 2
+	return			; store result in temp_div
 
 mod_8:
-	movwf	0x07
-	andwf	temp_mod, 1, 0
+	movwf	temp_mod
+	movlw	7		; x & 7 is same as taking mod 8 in binary
+	andwf	temp_mod, 1, 0	; store result in temp mod!
+	return
+
+mod_to_pattern:			; Given value in mod_8, return byte with kth bit on
+	movlw	0x01
+	movwf	temp_pattern
+pattern_loop:
+	rlncf	temp_pattern	; rotate 0x01 left temp_mod times to go from 0xk -> 0k000000B
+	decfsz	temp_mod
+	goto	pattern_loop
 	return
 	
 GLCD_Draw_Pixel:
-	movf	x
+	movf	x, 0, 1
 	call	GLCD_Set_Col	
-	movf	y		
+	movf	y, 0, 1	
 	call	div_by_8	; Divide y by 8 and have result in temp_div
-	movf	temp_div
-	call	GLCD_Set_Row
-	movlw	0x00
-	cpfseq	colour		; draw black pixel if colour != 0
-	goto	Draw_Black
-	goto	Draw_White
-Draw_Black:
-	movff	y, temp_div
-	call	mod_8		; find y mod 8 and store in temp_mod
-	movf	temp_mod	; temp mod now in W
-	clrf	shift_counter	; clear temp mod
-	bsf	shift_counter, temp_mod	; set the y%8 th bit on, rest off
-	comf	shift_counter, 1, 0	; apply logical NOT
-	movf	x		; move x to GLCD read as an argument
-	call	GLCD_Read	; get the data out from x
-	movf	read_byte
-	andwf	shift_counter, 0, 0
-	movwf	write_byte
-	goto	Write_Finish
-Draw_White:	
-	movff	y, temp_div
-	call	mod_8		; find y mod 8 and store in temp_mod
-	movf	temp_mod	; temp mod now in W
-	clrf	shift_counter	; clear temp mod
-	bsf	shift_counter, temp_mod	; set the y%8 th bit on, rest off
-	movf	x		; move x to GLCD read as an argument
-	call	GLCD_Read	; get the data out from x
-	movf	read_byte	; move value in read byte (set by GLCD_read) to W
-	iorwf	shift_counter, 0, 0	; OR WREG w/ temp mod, stor result in W
-	movwf	write_byte	; Move W to write_byte variable
-	goto	Write_Finish
-Write_Finish:
-	movf	x
+	movf	temp_div, 0, 1
+	call	GLCD_Set_Row	
+	
+	call	GLCD_Read	; get the data out from x,y
+	movf	read_byte, 0, 1	; move read byte into WREG
+	movwf	write_byte	; move read byte into the byte to write - this is to avoid overwriting neighbouring pixels
+	
+	movf	x, 0, 1		; have to set where we're going to write to again!
 	call	GLCD_Set_Col	
-	movf	y		
+	movf	y, 0, 1	
 	call	div_by_8	; Divide y by 8 and have result in temp_div
-	movf	temp_div
+	movf	temp_div, 0, 1
 	call	GLCD_Set_Row
-	movf	write_byte
+	
+	movf	y, 0, 1	
+	call	mod_8		; calculate mod_8 of y
+	
+	;movlw	0x00		; temporarily assume write_byte is 0x00 - need to make this the byte read so as not to overwrite stuff later
+	;movwf	write_byte
+	call	mod_to_pattern	; convert mod y to binary number with kth bit on
+	movf	temp_pattern, 0, 1
+	iorwf	write_byte	; ior this binary number with the write byte
+	
+	movf	write_byte, 0, 1
 	call	GLCD_Write
 	return
 
 GLCD_Clear_Line:
-	call	GLCD_Set_Row
-	movlw	0x40
-	call	GLCD_Set_Col
-	bsf	LATB, GLCD_CS1
-	movlw	0x40
+	call	GLCD_Set_Row	    ; Go to row specified by WREG
+	movlw	0x00		    ; Reset clear counter here before beginning
 	movwf	Clear_cnt
 Clear_loop:
-	movlw	0x00
-	call	GLCD_Write
-	decfsz	Clear_cnt
+	movlw	0x00		    ; Write blank data to LCD screen to clear
+	call	GLCD_Write	    ; Don't need to increment col as X incremented when Write called
+	incf	Clear_cnt, 1, 0	    ; Increment until we reach 0x40 = 64
+	movlw	0x80		    ; 0x40 = 64 or 0x3F = 63?
+	cpfseq	Clear_cnt	    ; Only skip when Clear_cnt = 0x40
 	goto	Clear_loop
 	return
 	
 GLCD_Clear_Screen:
-	movf	Clear_cnt_2
-	call	GLCD_Clear_Line
-	decfsz	Clear_cnt_2
-	goto	GLCD_Clear_Screen
-	movlw	0x08
+	movlw	0x00		    ; Reset clear row counter
 	movwf	Clear_cnt_2
+Clear_screen_loop:
+	movf	Clear_cnt_2, 0, 0   ; Move current value to WREG, this is the row supplied to Clear_Line
+	call	GLCD_Clear_Line	    ; Clear given Line/row
+	incf	Clear_cnt_2, 1, 0   ; Increment clear counter
+	movlw	0x08		    ; 8 rows -> 8 times
+	cpfseq	Clear_cnt_2	    ; Skip if eq to 8
+	goto	Clear_screen_loop   ; If not loop
 	return
 
 GLCD_Set_Line:			    ; Given line addr in WREG start line threre
@@ -283,31 +264,44 @@ GLCD_Set_Line:			    ; Given line addr in WREG start line threre
 	return
 	
 GLCD_Setup:
-	clrf	TRISB
+	clrf	TRISB		    ; Clear all these ports/tris before loop
 	clrf	TRISD
 	clrf	LATB
 	clrf	PORTD
-	bsf	LATB, GLCD_CS1
+	bsf	LATB, GLCD_CS1	    ; Set the bits - don't care about cs rn
 	bsf	LATB, GLCD_CS2
 	bsf	LATB, GLCD_RST
-	call	GLCD_On
-	call	GLCD_Clear_Screen
+	
 	movlw	0x0F
 	movwf	GLCD_cnt_2
-	call	GLCD_Set_Line
+	movlw	0x3F
+	movwf	Page_width	    ; The 'width' of the page - 63, used for chip sel in set_col
+	
+	call	GLCD_On		    ; Turn on the GLCD
+	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
 	return
 
 GLCD_Draw:
-	movlw	1
+	movlw	1		    ; These don't matter just for testing
 	movwf	x
-	movlw	1
+	movlw	2
 	movwf	y
-	clrf	colour
-	call	GLCD_Draw_Pixel
+	movlw	0x01
+	movwf	colour		    ; Draw in 'black'
+	call	GLCD_Draw_Pixel	
 	movlw	1000
-	;call	GLCD_Clear_Screen
 	call	GLCD_delay_ms
-	movlw	1000
 	
 	goto	GLCD_Draw   
+	return
+	
+GLCD_Test:
+	movlw	1
+	call	GLCD_Set_Col
+	movlw	0
+	call	GLCD_Set_Row
+	movlw	0xAA
+	call	GLCD_Write
+	movlw	1000
+	call	GLCD_delay_ms
 	return
