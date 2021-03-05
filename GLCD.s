@@ -208,12 +208,21 @@ GLCD_Draw_Pixel:
 	movf	y, 0, 1	
 	call	mod_8		; calculate mod_8 of y
 	
-	;movlw	0x00		; temporarily assume write_byte is 0x00 - need to make this the byte read so as not to overwrite stuff later
-	;movwf	write_byte
 	call	mod_to_pattern	; convert mod y to binary number with kth bit on
+	movwf	0x00		; check if colour is blue (0x00) or 'black'
+	cpfseq	colour
+	goto	Draw_blue
+	goto	Draw_black
+Draw_black:
 	movf	temp_pattern, 0, 1
-	iorwf	write_byte	; ior this binary number with the write byte
-	
+	iorwf	write_byte	; ior this binary number with the write byte to draw a pixel
+	goto	Draw_finish
+Draw_blue:
+	comf	temp_pattern, 1, 1  ; to draw blue/empty pixel complement pattern
+	movf	temp_pattern, 0, 1  
+	andwf	write_byte	    ; andwf this pattern with the read bye (draw everything as usual except the pixel at the pattern location)
+	goto	Draw_finish
+Draw_finish:
 	movf	write_byte, 0, 1
 	call	GLCD_Write
 	return
@@ -282,6 +291,15 @@ GLCD_Draw:
 	movlw	1000
 	call	GLCD_delay_ms
 	
+	movlw	1		    ; These don't matter just for testing
+	movwf	x
+	movlw	5
+	movwf	y
+	movlw	0x00
+	movwf	colour		    ; Draw in 'black'
+	call	GLCD_Draw_Pixel	
+	movlw	1000
+	call	GLCD_delay_ms
 	goto	GLCD_Draw   
 	return
 	
