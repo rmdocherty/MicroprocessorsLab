@@ -47,7 +47,8 @@ Int_Hi:				; Interrupt Service Routine (ISR)
 	bcf	TMR0IF		; clear interrupt flag
 	retfie	f		; fast return from interrupt
 	movlw	0x00		; Turn off all PORTH
-	movwf	LATH		
+	movwf	LATH	
+	return
 	
 Int_Setup:
 ;	clrf	TRISD, A	; Set PORTD as all outputs

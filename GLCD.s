@@ -1,6 +1,7 @@
 #include <xc.inc>
 
-global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off
+global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
+extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read 
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -99,7 +100,7 @@ GLCD_Off:			    ; Turn off display
 	bcf	LATB, GLCD_CS2, A
 	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
 	bcf	LATB, GLCD_RW, A   ; R/W low means write
-	movlw	0x3E		    ; Hex for on command
+	movlw	0x3E		    ; Hex for off command
 	movwf	PORTD		    ; Move to data
 	call	GLCD_Enable_Pulse	    ; Pulse
 	return
@@ -322,4 +323,37 @@ GLCD_Test:
 	call	GLCD_Write
 	movlw	1000
 	call	GLCD_delay_ms
+	return
+
+GLCD_Touchscreen:
+	call	ADC_Setup_X
+	call	ADC_Read
+	movff	ADRESL, x
+	;movff	ADRESH, X_high
+	movlw	128
+	subwf	x, 1, 0
+	
+	;movff	ADRESL, x
+	;movlw	1
+	;call	GLCD_delay_ms
+	
+	call	ADC_Setup_Y
+	call	ADC_Read
+	movff	ADRESL, y
+	;movff	ADRESH, Y_high
+	
+	;movff	ADRESL, y
+	movlw	64
+	subwf	y, 1, 0
+	
+	;movlw	1
+	;call	GLCD_delay_ms
+	
+	movlw	0x01
+	movwf	colour		    ; Draw in 'black'
+	;call	GLCD_Draw_Pixel	
+	movlw	1
+	call	GLCD_delay_ms
+	
+	goto	GLCD_Touchscreen
 	return
