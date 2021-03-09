@@ -14,22 +14,21 @@ psect	adc_code,class=CODE
 
 	    ; TRIS 0 output from board, TRIS 1 input from device
 ADC_Setup_X:
-	clrf	TRISE
-	clrf	TRISF
-    
-	bcf	TRISE, DRIVEB, A    ; Set Drive B to 0 (outputs)
-	bsf	TRISF, READY, A	    ; Set Read-Y to 1  (outputs)
+;	clrf	TRISE		    
+;	clrf	TRISF
+	bcf	TRISE, DRIVEA, A    ; Set Tri-state of RE4, RE5 to low (output) - DRIVEA, DRIVEB
+	bcf	TRISE, DRIVEB, A    
 	
-	bcf	TRISE, DRIVEA, A  
-	bsf	PORTE, DRIVEA, A    ; et Drive A low (5V)
+	bsf	PORTE, DRIVEA, A    ; Set Drive A (RE4) high (5V)
+	bcf	PORTE, DRIVEB, A    ; Set Drive B (RE5) low (0V)
 	
-	bcf	PORTE, DRIVEB, A    ; Set Drive B low (0V)
+	bsf	TRISF, READY, A	    ; Set Tri-state of RF5, RF2 to high (input) - READX, READY
+	bsf	TRISF, READX, A	    
 	
-	bsf	TRISF, READX, A  ; pin RF5==AN20 input, set to as READY = RF5
-	banksel	ANCON1
-	bsf	ANSEL10	    ; should be ANSELF10, also need to consider where ANSEL registers are in
-	movlb	0x00	    ; reset BSR
-	movlw   00101001B   ; select AN10 for measurement - need to change this to select ANSEL10    
+	banksel	ANCON1	    ; Selecting ANCON1 - Analogue/Digital control register 1
+	bsf	ANSEL10	    ; Select ANSEL10, activating channel 10 for measurement (= RF5 I/O)
+	movlb	0x00	    ; Reset BSR
+	movlw   00101001B   ; Set channel select bits (bits 2-6) - ch10, and enable ADC measurements (bit 0)  
 	movwf   ADCON0, A   ; and turn ADC on
 	movlw   0x30	    ; Select 4.096V positive reference
 	movwf   ADCON1,	A   ; 0V for -ve reference and -ve input
@@ -41,20 +40,19 @@ ADC_Setup_Y:
 	;clrf	TRISE
 	;clrf	TRISF
     
-	bcf	TRISE, DRIVEA, A    ; Set Drive B to 0 (outputs)
-	bsf	TRISF, READX, A	    ; Set Read-Y to 1  (outputs)
+	bcf	TRISE, DRIVEA, A    ; Set Tri-state of RE4, RE5 to low (output) - DRIVEA, DRIVEB
+	bcf	TRISE, DRIVEB, A
+
+	bsf	PORTE, DRIVEB, A    ; Set Drive B (RE5) high (5V)
+	bcf	PORTE, DRIVEA, A    ; Set Drive A (RE4) low (0V)
 	
+	bsf	TRISF, READX, A	    ; Set Tri-state of RF5, RF2 to high (input) - READX, READY
+	bsf	TRISF, READY, A  
 	
-	bcf	TRISE, DRIVEB, A  
-	bsf	PORTE, DRIVEB, A    ; et Drive A low (5V)
-	
-	bcf	PORTE, DRIVEA, A    ; Set Drive B low (0V)
-	
-	bsf	TRISF, READY, A  ; pin RF5==AN20 input, set to as READY = RF5
-	banksel	ANCON0
-	bsf	ANSEL7	    ; should be ANSELF10, also need to consider where ANSEL registers are in
+	banksel	ANCON0	    ; Selecting ANCON0 - Analogue/Digital control register 0
+	bsf	ANSEL7	    ; Select ANSEL7, activating channel 7 for measurement (= RF2 I/O)
 	movlb	0x00	    ; reset BSR
-	movlw   0011101B   ; select AN10 for measurement - need to change this to select ANSEL10    
+	movlw   0011101B    ; Set channel select bits (bits 2-6) - ch7, and enable ADC measurements (bit 0)     
 	movwf   ADCON0, A   ; and turn ADC on
 	movlw   0x30	    ; Select 4.096V positive reference
 	movwf   ADCON1,	A   ; 0V for -ve reference and -ve input
