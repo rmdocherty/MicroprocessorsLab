@@ -328,11 +328,11 @@ GLCD_Test:
 GLCD_Touchscreen:
 	;call	ADC_Setup_X
 	;call	ADC_Read
-	;movff	ADRESH, x#
+	;movff	ADRESH, x
 	;movf	ADRESH, W, A
 	;movf	ADRESL, W, A
-	movlw	124
-	subwf	x, 1, 0
+	;movlw	124
+	;subwf	x, 1, 0
 	
 	;movff	ADRESL, x
 	;clrf	ADRESL
