@@ -326,24 +326,23 @@ GLCD_Test:
 	return
 
 GLCD_Touchscreen:
-	call	ADC_Setup_X
-	movlw	2
-	call	GLCD_delay_ms
-	call	ADC_Read
-	movff	ADRESL, x
-	;movff	ADRESH, X_high
+	;call	ADC_Setup_X
+	;call	ADC_Read
+	;movff	ADRESH, x#
+	;movf	ADRESH, W, A
+	;movf	ADRESL, W, A
 	movlw	124
 	subwf	x, 1, 0
 	
 	;movff	ADRESL, x
-
+	;clrf	ADRESL
+	;clrf	ADRESH
 	
 	call	ADC_Setup_Y
-	movlw	2
-	call	GLCD_delay_ms
 	call	ADC_Read
-	movff	ADRESL, y
-	;movff	ADRESH, Y_high
+	movf	ADRESH, W, A
+	movf	ADRESL, W, A
+;	movff	ADRESL, y
 	
 	;movff	ADRESL, y
 	movlw	27
@@ -354,7 +353,7 @@ GLCD_Touchscreen:
 	
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
-	call	GLCD_Draw_Pixel	
+	;call	GLCD_Draw_Pixel	
 	movlw	1
 	call	GLCD_delay_ms
 	goto	GLCD_Touchscreen
