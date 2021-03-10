@@ -1,7 +1,7 @@
 #include <xc.inc>
 
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
-extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read 
+extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y 
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -11,7 +11,9 @@ GLCD_cnt_ms:	ds 1	; reserve 1 byte for ms counter
 Col_index:	ds 1	; What col do we want to go to
 Row_index:	ds 1
 x:		ds 1	; x position we want to write to
+x1:		ds 1
 y:		ds 1	; y pos we want to write to 
+y1:		ds 1
 colour:		ds 1	; What colour do we want to draw
 read_byte:	ds 1	; Variable to read data in from GLCD
 write_byte:	ds 1	; Variable to write data to GLCD
@@ -326,28 +328,30 @@ GLCD_Test:
 	return
 
 GLCD_Touchscreen:
-	;call	ADC_Setup_X
-	;call	ADC_Read
-	;movff	ADRESH, x
-	;movf	ADRESH, W, A
-	;movf	ADRESL, W, A
-	;movlw	124
-	;subwf	x, 1, 0
-	
+	call	ADC_Setup_X
+	call	ADC_Read
+	movf	ADRESH, W, A
+	movf	ADRESL, W, A
+;	movf	ADRESH, W, A
+;	movf	ADRESL, W, A
+	movlw	124
+	subwf	x, 1, 0
+	call	Clear_X
 	;movff	ADRESL, x
-	;clrf	ADRESL
-	;clrf	ADRESH
+;	clrf	ADRESL
+;	clrf	ADRESH
 	
 	call	ADC_Setup_Y
 	call	ADC_Read
 	movf	ADRESH, W, A
 	movf	ADRESL, W, A
-;	movff	ADRESL, y
+;	movff	ADRESH, y 
+;	movff	ADRESL, y1
 	
 	;movff	ADRESL, y
 	movlw	27
 	subwf	y, 1, 0
-	
+	call	Clear_Y
 	;movlw	1
 	;call	GLCD_delay_ms
 	
