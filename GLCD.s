@@ -328,15 +328,23 @@ GLCD_Test:
 	return
 
 GLCD_Touchscreen:
+	clrf	CM1CON
+	clrf	CM2CON
+	clrf	CM3CON
 	call	ADC_Setup_X
 	call	ADC_Read
-	movf	ADRESH, W, A
-	movf	ADRESL, W, A
+	
+	movlw	01101010B
+	subwf	ADRESL, 0, 1
+	movwf	x
+	
+	;movf	ADRESH, W, A
+	;movf	ADRESL, W, A
 ;	movf	ADRESH, W, A
 ;	movf	ADRESL, W, A
-	movlw	124
-	subwf	x, 1, 0
-	call	Clear_X
+	;movlw	124
+	;subwf	x, 1, 0
+	;call	Clear_X
 	;movff	ADRESL, x
 ;	clrf	ADRESL
 ;	clrf	ADRESH
@@ -349,9 +357,9 @@ GLCD_Touchscreen:
 ;	movff	ADRESL, y1
 	
 	;movff	ADRESL, y
-	movlw	27
-	subwf	y, 1, 0
-	call	Clear_Y
+	;movlw	27
+	;subwf	y, 1, 0
+	;call	Clear_Y
 	;movlw	1
 	;call	GLCD_delay_ms
 	
