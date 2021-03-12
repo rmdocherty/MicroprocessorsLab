@@ -1,7 +1,8 @@
 #include <xc.inc>
 
+extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
-extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y 
+ 
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -24,6 +25,7 @@ shift_counter:	ds 1	; Variable to count # of shifts
 Clear_cnt:	ds 1	; Variable to loop clear line over
 Clear_cnt_2:	ds 1	; Variable to loop clear screen over
 Page_width:	ds 1	;Variable to hold half screen width
+temp_adresl:	ds 1
  
   
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
@@ -328,15 +330,15 @@ GLCD_Test:
 	return
 
 GLCD_Touchscreen:
-	clrf	CM1CON
-	clrf	CM2CON
-	clrf	CM3CON
+	;clrf	CM1CON
+	;clrf	CM2CON
+	;clrf	CM3CON
 	call	ADC_Setup_X
 	call	ADC_Read
-	
-	movlw	01101010B
-	subwf	ADRESL, 0, 1
-	movwf	x
+	movff	ADRESL, temp_adresl
+;	movlw	01101010B
+;	subwf	temp_adresl, 0, 1
+;	movff	temp_adresl, x
 	
 	;movf	ADRESH, W, A
 	;movf	ADRESL, W, A
@@ -348,11 +350,21 @@ GLCD_Touchscreen:
 	;movff	ADRESL, x
 ;	clrf	ADRESL
 ;	clrf	ADRESH
-	
+	;movlw	1
+	;call	GLCD_delay_ms
+
 	call	ADC_Setup_Y
 	call	ADC_Read
-	movf	ADRESH, W, A
-	movf	ADRESL, W, A
+	movff	ADRESL, temp_adresl
+;	movlw	0xCC
+;	subwf	temp_adresl, 0, 1
+;	movff	temp_adresl, ADRESL
+	;rrcf	ADRES
+	;rrcf	ADRES
+	;rrcf	ADRES
+	;movwf	0xFF
+	;movwf	ADRESL
+	;movlw	0x00
 ;	movff	ADRESH, y 
 ;	movff	ADRESL, y1
 	
@@ -362,11 +374,14 @@ GLCD_Touchscreen:
 	;call	Clear_Y
 	;movlw	1
 	;call	GLCD_delay_ms
+;	movlw	0x0F
+;	movwf	y
 	
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
 	;call	GLCD_Draw_Pixel	
 	movlw	1
 	call	GLCD_delay_ms
+	;call	GLCD_Clear_Screen
 	goto	GLCD_Touchscreen
 	return
