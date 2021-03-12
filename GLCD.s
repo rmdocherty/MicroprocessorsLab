@@ -2,7 +2,7 @@
 
 extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
- 
+global	GLCD_delay_ms
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -330,58 +330,18 @@ GLCD_Test:
 	return
 
 GLCD_Touchscreen:
-	;clrf	CM1CON
-	;clrf	CM2CON
-	;clrf	CM3CON
 	call	ADC_Setup_X
-	call	ADC_Read
-	movff	ADRESL, temp_adresl
-;	movlw	01101010B
-;	subwf	temp_adresl, 0, 1
-;	movff	temp_adresl, x
-	
-	;movf	ADRESH, W, A
-	;movf	ADRESL, W, A
-;	movf	ADRESH, W, A
-;	movf	ADRESL, W, A
-	;movlw	124
-	;subwf	x, 1, 0
-	;call	Clear_X
-	;movff	ADRESL, x
-;	clrf	ADRESL
-;	clrf	ADRESH
-	;movlw	1
-	;call	GLCD_delay_ms
-
-	call	ADC_Setup_Y
-	call	ADC_Read
-	movff	ADRESL, temp_adresl
-;	movlw	0xCC
-;	subwf	temp_adresl, 0, 1
-;	movff	temp_adresl, ADRESL
-	;rrcf	ADRES
-	;rrcf	ADRES
-	;rrcf	ADRES
-	;movwf	0xFF
-	;movwf	ADRESL
-	;movlw	0x00
-;	movff	ADRESH, y 
-;	movff	ADRESL, y1
-	
-	;movff	ADRESL, y
-	;movlw	27
-	;subwf	y, 1, 0
-	;call	Clear_Y
-	;movlw	1
-	;call	GLCD_delay_ms
-;	movlw	0x0F
-;	movwf	y
-	
-	movlw	0x01
-	movwf	colour		    ; Draw in 'black'
-	;call	GLCD_Draw_Pixel	
 	movlw	1
 	call	GLCD_delay_ms
-	;call	GLCD_Clear_Screen
+	call	ADC_Read
+
+	call	ADC_Setup_Y
+	movlw	1
+	call	GLCD_delay_ms
+	call	ADC_Read
+
+	movlw	0x01
+	movwf	colour		    ; Draw in 'black'
+
 	goto	GLCD_Touchscreen
 	return
