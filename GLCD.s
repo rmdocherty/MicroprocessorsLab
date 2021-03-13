@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y
+extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y, move_adres_X, Convert_X, move_adres_Y, Convert_Y
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms
     
@@ -334,14 +334,24 @@ GLCD_Touchscreen:
 	movlw	1
 	call	GLCD_delay_ms
 	call	ADC_Read
-
+	
+	call	move_adres_X
+	call	Convert_X
+	movwf	x, A
+	
 	call	ADC_Setup_Y
 	movlw	1
 	call	GLCD_delay_ms
 	call	ADC_Read
-
+	
+	call	move_adres_Y
+	call	Convert_Y
+	movwf	y, A
+	
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
-
+	
+	call	GLCD_Draw_Pixel
+	
 	goto	GLCD_Touchscreen
 	return

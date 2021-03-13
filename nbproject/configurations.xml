@@ -19,7 +19,7 @@
       <itemPath>ACD.s</itemPath>
       <itemPath>GLCD.s</itemPath>
       <itemPath>Interrupt.s</itemPath>
-      <itemPath>lcd_demo.s</itemPath>
+      <itemPath>TouchEvent.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

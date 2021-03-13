@@ -32,7 +32,7 @@ Convert_X:
 	incf	x_counter, A		; Increment division counter
 	movlw	0x19			; Move 25 (decimal) to W
         subwf	x_voltage_l, F, A	; Subtract 25 from low 8-bit 
-        btfss   STATUS, C		; Check if carry bit is 1, if not, skip next
+        btfss   STATUS, 0		; Check if carry bit (bit 0 of STATUS) is 1, if not, skip next
         decfsz  x_voltage_h, F, A	; If carry = 1, decrement high 8-bit
 	bra	Convert_X		; Loop again
 	movf	x_counter, W		; Move counter value to W
@@ -49,8 +49,8 @@ move_adres_Y:		; Should be called before Convert_Y
 Convert_Y:
 	incf	y_counter, A		; Increment division counter
 	movlw	0x2C			; Move 44 (decimal) to W
-        subwf	y_voltage_l, F, A	; Subtract 44 from low 8-bit 
-        btfss   STATUS, C		; Check if carry bit is 1, if not, skip next
+        subwf	y_voltage_l, F, A	; Subtract 44w from low 8-bit 
+        btfss   STATUS, 0		; Check if carry bit (bit 0 of STATUS) is 1, if not, skip next
         decfsz  y_voltage_h, F, A	; If carry = 1, decrement high 8-bit
 	bra	Convert_Y		; Loop again
 	movf	y_counter, W		; Move counter value to W

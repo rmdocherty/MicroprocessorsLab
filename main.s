@@ -13,6 +13,6 @@ main:
 	;call	GLCD_Test
 ;	call	GLCD_Draw
 	call	GLCD_Touchscreen
-	call	GLCD_Off
+;	call	GLCD_Off
 	end	main
 
