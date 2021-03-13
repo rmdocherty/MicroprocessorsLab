@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y, move_adres_X, Convert_X, move_adres_Y, Convert_Y
+extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, move_adres_X, Convert_X, move_adres_Y, Convert_Y
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms
     
@@ -26,6 +26,7 @@ Clear_cnt:	ds 1	; Variable to loop clear line over
 Clear_cnt_2:	ds 1	; Variable to loop clear screen over
 Page_width:	ds 1	;Variable to hold half screen width
 temp_adresl:	ds 1
+draw:		ds 1	; Variable to hold draw bit
  
   
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
@@ -202,23 +203,23 @@ pattern_loop:
 	return
 	
 GLCD_Draw_Pixel:
-	movf	x, 0, 1
-	call	GLCD_Set_Col	
-	movf	y, 0, 1	
+	movf	x, 0, 1		; move x into W
+	call	GLCD_Set_Col	; set the column as x position ( 0 < x < 128)
+	movf	y, 0, 1		; move y into W
 	call	div_by_8	; Divide y by 8 and have result in temp_div
 	movf	temp_div, 0, 1
-	call	GLCD_Set_Row	
+	call	GLCD_Set_Row	; set row as y//8 (0 < y < 8) i.e map pixel to row
 	
 	call	GLCD_Read	; get the data out from x,y
 	movf	read_byte, 0, 1	; move read byte into WREG
 	movwf	write_byte	; move read byte into the byte to write - this is to avoid overwriting neighbouring pixels
 	
 	movf	x, 0, 1		; have to set where we're going to write to again!
-	call	GLCD_Set_Col	
+	call	GLCD_Set_Col	; again set column as x
 	movf	y, 0, 1	
 	call	div_by_8	; Divide y by 8 and have result in temp_div
-	movf	temp_div, 0, 1
-	call	GLCD_Set_Row
+	movf	temp_div, 0, 1	
+	call	GLCD_Set_Row	; again set y 
 	
 	movf	y, 0, 1	
 	call	mod_8		; calculate mod_8 of y
@@ -230,7 +231,7 @@ GLCD_Draw_Pixel:
 	goto	Draw_black
 Draw_black:
 	movf	temp_pattern, 0, 1
-	iorwf	write_byte	; ior this binary number with the write byte to draw a pixel
+	iorwf	write_byte	    ; ior this binary number with the write byte to draw a pixel
 	goto	Draw_finish
 Draw_blue:
 	comf	temp_pattern, 1, 1  ; to draw blue/empty pixel complement pattern
@@ -238,8 +239,8 @@ Draw_blue:
 	andwf	write_byte	    ; andwf this pattern with the read bye (draw everything as usual except the pixel at the pattern location)
 	goto	Draw_finish
 Draw_finish:
-	movf	write_byte, 0, 1
-	call	GLCD_Write
+	movf	write_byte, 0, 1    ; move the byte to be written into W
+	call	GLCD_Write	    ; Call GLCD write using W AS argument
 	return
 
 GLCD_Clear_Line:
@@ -286,10 +287,12 @@ GLCD_Setup:
 	bsf	LATB, GLCD_CS2
 	bsf	LATB, GLCD_RST
 	
-	movlw	0x0F
+	movlw	0x0F		    ; correct delays 
 	movwf	GLCD_cnt_2
 	movlw	0x3F
 	movwf	Page_width	    ; The 'width' of the page - 63, used for chip sel in set_col
+	movlw	0x00		    ; Set draw bit to 0
+	movwf	draw
 	
 	call	GLCD_On		    ; Turn on the GLCD
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
@@ -329,29 +332,48 @@ GLCD_Test:
 	call	GLCD_delay_ms
 	return
 
+Set_X:	
+	call	move_adres_X	    ; move ADRES to variables
+	call	Convert_X	    ; operate on variables to convert to X pixel
+	movwf	x, A		    ; move to x variable to be drawn on screen
+	return
+
+Set_Y:
+	call	move_adres_Y	    ; move ADRES to variables
+	call	Convert_Y	    ; operate on variables to convert to Y pixel
+	movwf	y, A
+	movlw	0x01
+	movwf	draw, A		    ; set draw bit on as touch has been recognised
+	return
+
 GLCD_Touchscreen:
 	call	ADC_Setup_X
-	movlw	1
+	movlw	1		    ; delay for voltages to settle
 	call	GLCD_delay_ms
-	call	ADC_Read
+	call	ADC_Read	    ; move x touch into ADRES
 	
-	call	move_adres_X
-	call	Convert_X
-	movwf	x, A
+	tstfsz	ADRESH		    ; if adresh = 0 i.e x < 255 -> no touch
+	call	Set_X		    ; if not convert x position to x pixel
 	
-	call	ADC_Setup_Y
-	movlw	1
-	call	GLCD_delay_ms
-	call	ADC_Read
+	call	ADC_Setup_Y	    
+	movlw	1		    ; delay for voltages to settle
+	call	GLCD_delay_ms	
+	call	ADC_Read	    ; move Y touch into ADRES
 	
-	call	move_adres_Y
-	call	Convert_Y
-	movwf	y, A
-	
+	tstfsz	ADRESH		    ; if adresh = 0 i.e y < 255 -> no touch
+	call	Set_Y		    ; if not convert y position to y pixel
+	    
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
 	
+	tstfsz	draw		    ; draw bit only set if set_y called so will skip if no touch recognised
 	call	GLCD_Draw_Pixel
 	
-	goto	GLCD_Touchscreen
+	movlw	0x00		    ; reset draw bit
+	movwf	draw, A
+	
+	movlw	20
+	call	GLCD_delay_ms
+	
+	goto	GLCD_Touchscreen    ; loop
 	return

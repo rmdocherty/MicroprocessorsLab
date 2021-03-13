@@ -1,9 +1,9 @@
 #include <xc.inc>
 
-global  ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y    
+global  ADC_Setup_X, ADC_Setup_Y, ADC_Read, ADC_Init   
 extrn	GLCD_delay_ms
     
-;PSECT	udata_acs
+
 PSECT udata_acs_ovr,space=1,ovrld,class=COMRAM
 READX	    EQU 5
 READY	    EQU	2
@@ -11,23 +11,21 @@ DRIVEA	    EQU	4
 DRIVEB	    EQU	5	    
   
 psect	adc_code,class=CODE
-
-	    ; TRIS 0 output from board, TRIS 1 input from device
-ADC_Setup_X:
-	
+	    
+ADC_Init:	; set all the right tristates - only needs to be done once
 	bsf	TRISF, READX, A
 	bsf	TRISF, READY, A	    ; Set Tri-state of RF5, RF2 to high (input)
 	bcf	TRISE, DRIVEB, A    ; Set Tri-state of RE4, RE5 to low (output)
 	bcf	TRISE, DRIVEA, A
+	return
 	
+ADC_Setup_X:	; set the ADC to measure voltage from RF5 = ReadX
 	bsf	LATE, DRIVEA, A    ; Set Drive A high (5V)
 	bcf	LATE, DRIVEB, A    ; Set Drive B low (0V)
 	
 	banksel ANCON1
 	bsf	ANSEL10	    ; ANSEL10 - uses RF5 as I/O
 	movlb	0x00
-	movlw	0x00
-	movwf   ADCON0, A   ; and turn ADC on
 	movlw	00101001B
 	movwf   ADCON0, A   ; and turn ADC on
 	movlw   0x00	    ; Select 0V positive reference, otherwise x sensitivity truncated
@@ -36,30 +34,13 @@ ADC_Setup_X:
 	movwf   ADCON2, A   ; Fosc/64 clock and acquisition times
 	return
 
-ADC_Setup_Y:
-	
-	;bsf	TRISF, READY, A	    ; Set Tri-state of RF5, RF2 to high (input)
-	;bsf	TRISF, READX, A
-	;bcf	TRISE, DRIVEB, A    ; Set Tri-state of RE4, RE5 to low (output)
-	;bcf	TRISE, DRIVEA, A
-	
-	;bcf	PORTF, READX, A	    ; Turn LEDs of RF4, RF5 off so they don't pull current
-	;bcf	PORTF, READY, A
-	;clrf	PORTE
+ADC_Setup_Y:	; set the ADC to measure voltage from RF2 = ReadY
 	bcf	LATE, DRIVEA, A    ; Set Drive A low (0V)
 	bsf	LATE, DRIVEB, A    ; Set Drive B high (5V), use LATE as setting bits here much quicker
 	
-	;movlw	1
-	;call	GLCD_delay_ms
- 
 	banksel	ANCON0
-;	banksel	ANCON1
-;	bsf	ANSEL10	    ; ANSEL10 - uses RF5 as I/O
 	bsf	ANSEL7	    ; ANSEL7 - uses RF2 as I/O
 	movlb	0x00
-
-    	;movlw	0x00
-	;movwf   ADCON0, A   ; and turn ADC on
 	movlw	00011101B  ; select configuration for ADC (channel select 7)
 	movwf   ADCON0, A   ; and turn ADC on
 	movlw   0x00	    ; Select 0V positive reference
@@ -73,16 +54,6 @@ ADC_Read:
 adc_loop:
 	btfsc   GO	    ; check to see if finished
 	bra	adc_loop
-	return
-Clear_X:		    ; Clear ANSEL10 bit after reading X (to allow a different channel to be selected)
-	banksel	ANCON1
-	bcf	ANSEL10	    ; ANSEL7 - uses RF2 as I/O
-	movlb	0x00
-	return
-Clear_Y:		    ; Clear ANSEL7 bit after reading Y (to allow a different channel to be selected)
-	banksel	ANCON0
-	bcf	ANSEL7
-	movlb	0x00
 	return
 
 end
