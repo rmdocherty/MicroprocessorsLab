@@ -1,6 +1,7 @@
 #include <xc.inc>
 
-extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, Clear_X, Clear_Y
+extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read
+extrn	Scale_X, Scale_Y
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms
     
@@ -26,6 +27,7 @@ Clear_cnt:	ds 1	; Variable to loop clear line over
 Clear_cnt_2:	ds 1	; Variable to loop clear screen over
 Page_width:	ds 1	;Variable to hold half screen width
 temp_adresl:	ds 1
+draw:		ds 1
  
   
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
@@ -290,6 +292,8 @@ GLCD_Setup:
 	movwf	GLCD_cnt_2
 	movlw	0x3F
 	movwf	Page_width	    ; The 'width' of the page - 63, used for chip sel in set_col
+	movlw	0x00
+	movwf	draw
 	
 	call	GLCD_On		    ; Turn on the GLCD
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
@@ -329,19 +333,39 @@ GLCD_Test:
 	call	GLCD_delay_ms
 	return
 
+Set_X:
+	call	Scale_X
+	movwf	x
+	return
+Set_Y:
+	call	Scale_Y
+	movwf	y
+	movlw	0x01
+	movwf	draw
+	return
+	
 GLCD_Touchscreen:
 	call	ADC_Setup_X
 	movlw	1
 	call	GLCD_delay_ms
 	call	ADC_Read
+	tstfsz	ADRESH
+	call	Set_X
 
 	call	ADC_Setup_Y
 	movlw	1
 	call	GLCD_delay_ms
 	call	ADC_Read
+	tstfsz	ADRESH
+	call	Set_Y
 
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
-
+	movlw	0x00
+	cpfseq	draw
+	call	GLCD_Draw_Pixel
+	movlw	0x00
+	movwf	draw
+	
 	goto	GLCD_Touchscreen
 	return
