@@ -33,8 +33,11 @@ Clear_cnt_2:	ds 1	; Variable to loop clear screen over
 Page_width:	ds 1	;Variable to hold half screen width
 temp_adresl:	ds 1
 draw:		ds 1	; Variable to hold draw bit
-test_cnt:	ds 1
-  
+x_min:		ds 1
+x_max:		ds 1
+y_max:		ds 1
+brush_size:	ds 1
+    
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
 
 		; GLCD bit/pin mapping, used w/ bcf & bsf later
@@ -217,8 +220,7 @@ GLCD_Draw_Pixel:
 	call	GLCD_Set_Row	; set row as y//8 (0 < y < 8) i.e map pixel to row
 	
 	call	GLCD_Read	; get the data out from x,y
-	movf	read_byte, 0, 1	; move read byte into WREG
-	movwf	write_byte	; move read byte into the byte to write - this is to avoid overwriting neighbouring pixels
+	movff	read_byte, write_byte	; move read byte into the byte to write - this is to avoid overwriting neighbouring pixels
 	
 	movf	x, 0, 1		; have to set where we're going to write to again!
 	call	GLCD_Set_Col	; again set column as x
@@ -231,7 +233,7 @@ GLCD_Draw_Pixel:
 	call	mod_8		; calculate mod_8 of y
 	
 	call	mod_to_pattern	; convert mod y to binary number with kth bit on
-	movwf	0x00		; check if colour is blue (0x00) or 'black'
+ 	movwf	0x00		; check if colour is blue (0x00) or 'black'
 	cpfseq	colour
 	goto	Draw_blue
 	goto	Draw_black
@@ -249,6 +251,39 @@ Draw_finish:
 	call	GLCD_Write	    ; Call GLCD write using W AS argument
 	return
 
+GLCD_Square_Brush:	; draw square of dims (r, r) centred on (x,y) touch event
+
+	rrncf	brush_size, W, A    ; find r/2, store result in W
+	subwf	x, F, A	    ; x - r/2, store in W
+	subwf	y,  F, A	    ; y - r/2, store in W
+	movff	x, x_min, A	    ; save x - r/2 in y_min
+	
+	movf	brush_size, W, A
+	addwf	x, W, A
+	movwf	x_max, A
+	
+	;rrncf	brush_size, W, A    ; find r/2, store result in W
+	
+	movf	brush_size, W, A
+	addwf	y, W, A
+	movwf	y_max, A
+	
+x_loop:
+	call	GLCD_Draw_Pixel
+	incf	x, F, A
+	movf	x, W
+	cpfseq	x_max
+	goto	x_loop
+	goto	y_loop
+	
+y_loop:
+	movff	x_min, x, A
+	incf	y, F, A
+	movf	y, W
+	cpfseq	y_max
+	goto	x_loop
+	return
+	
 GLCD_Clear_Line:
 	call	GLCD_Set_Row	    ; Go to row specified by WREG
 	movlw	0x00		    ; Reset clear counter here before beginning
@@ -331,10 +366,11 @@ GLCD_Setup:
 	movwf	Page_width	    ; The 'width' of the page - 63, used for chip sel in set_col
 	movlw	0x00		    ; Set draw bit to 0
 	movwf	draw
-	movlw	0x00
-	movwf	test_cnt
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
+	movlw	0x02
+	movwf	brush_size
+
 	
 	call	GLCD_On		    ; Turn on the GLCD
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
@@ -377,13 +413,13 @@ GLCD_Touchscreen:
 	call	Set_Y		    ; if not convert y position to y pixel
 	
 	tstfsz	draw		    ; draw bit only set if set_y called so will skip if no touch recognised
-	call	GLCD_Draw_Pixel
+	call	GLCD_Square_Brush
 	
 	movlw	0x00		    ; reset draw bit
 	movwf	draw, A
 	
 	movlw	10
-	call	GLCD_delay_ms
+	call	GLCD_delay_x4us
 	
 	movf	0xFF
 	cpfseq	PORTJ
