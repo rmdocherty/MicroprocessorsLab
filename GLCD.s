@@ -2,8 +2,11 @@
 
 extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, move_adres_X, Convert_X, move_adres_Y, Convert_Y
 extrn	UART_Transmit_Byte
-global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
+extrn	Keypad_master, Row_setup
+global	GLCD_Setup, GLCD_Write, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms, GLCD_Send_Screen
+global	GLCD_Clear_Screen
+global	Toggle_Pen
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -254,7 +257,7 @@ Clear_loop:
 	movlw	0x00		    ; Write blank data to LCD screen to clear
 	call	GLCD_Write	    ; Don't need to increment col as X incremented when Write called
 	incf	Clear_cnt, 1, 0	    ; Increment until we reach 0x40 = 64
-	movlw	0x80		    ; 0x40 = 64 or 0x3F = 63?
+	movlw	0x40		    ; 0x40 = 64 or 0x3F = 63?
 	cpfseq	Clear_cnt	    ; Only skip when Clear_cnt = 0x40
 	goto	Clear_loop
 	return
@@ -330,43 +333,16 @@ GLCD_Setup:
 	movwf	draw
 	movlw	0x00
 	movwf	test_cnt
+	movlw	0x01
+	movwf	colour		    ; Draw in 'black'
 	
 	call	GLCD_On		    ; Turn on the GLCD
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
+	call	Row_setup
 	return
 
-GLCD_Draw:
-	movlw	1		    ; These don't matter just for testing
-	movwf	x
-	movlw	2
-	movwf	y
-	movlw	0x01
-	movwf	colour		    ; Draw in 'black'
-	call	GLCD_Draw_Pixel	
-	movlw	1000
-	call	GLCD_delay_ms
-	
-	movlw	1		    ; These don't matter just for testing
-	movwf	x
-	movlw	5
-	movwf	y
-	movlw	0x00
-	movwf	colour		    ; Draw in 'black'
-	call	GLCD_Draw_Pixel	
-	movlw	1000
-	call	GLCD_delay_ms
-	goto	GLCD_Draw   
-	return
-	
-GLCD_Test:
-	movlw	1
-	call	GLCD_Set_Col
-	movlw	0
-	call	GLCD_Set_Row
-	movlw	0xAA
-	call	GLCD_Write
-	movlw	1000
-	call	GLCD_delay_ms
+Toggle_Pen:
+	btg	colour, 0, A
 	return
 
 Set_X:	
@@ -399,9 +375,6 @@ GLCD_Touchscreen:
 	
 	tstfsz	ADRESH		    ; if adresh = 0 i.e y < 255 -> no touch
 	call	Set_Y		    ; if not convert y position to y pixel
-	    
-	movlw	0x01
-	movwf	colour		    ; Draw in 'black'
 	
 	tstfsz	draw		    ; draw bit only set if set_y called so will skip if no touch recognised
 	call	GLCD_Draw_Pixel
@@ -412,8 +385,9 @@ GLCD_Touchscreen:
 	movlw	10
 	call	GLCD_delay_ms
 	
-	;infsnz	test_cnt
-	;call	GLCD_Send_Screen
-	
+	movf	0xFF
+	cpfseq	PORTJ
+	call	Keypad_master
+
 	goto	GLCD_Touchscreen    ; loop
 	return

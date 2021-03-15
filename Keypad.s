@@ -1,6 +1,8 @@
 #include <xc.inc>
 
-global Keypad_master
+global Keypad_master, Row_setup
+extrn  GLCD_Clear_Screen, GLCD_Send_Screen
+extrn  Toggle_Pen
 extrn  GLCD_delay_ms
 
 psect	udata_acs
@@ -102,7 +104,8 @@ Decode:
 	movlw	01111110B  ; Binary code for the A input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'A'
+	call	GLCD_Send_Screen
+	;retlw	'A'
 	
 	movlw	01111011B  ; Binary code for the B input
 	cpfseq	Result, A
@@ -112,7 +115,8 @@ Decode:
 	movlw	01110111B  ; Binary code for the C input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'C'
+	call	GLCD_Clear_Screen
+	;retlw	'C'
 
 	movlw	10110111B  ; Binary code for the D input
 	cpfseq	Result, A
@@ -122,7 +126,8 @@ Decode:
 	movlw	11010111B  ; Binary code for the E input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'E'
+	call	Toggle_Pen
+	;retlw	'E'
 
 	movlw	11100111B  ; Binary code for the F input
 	cpfseq	Result, A
