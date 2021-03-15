@@ -1,14 +1,17 @@
 #include <xc.inc>
 
 extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, move_adres_X, Convert_X, move_adres_Y, Convert_Y
+extrn	UART_Transmit_Byte
 global	GLCD_Setup, GLCD_Draw, GLCD_Write, GLCD_Test, GLCD_On, GLCD_Off, GLCD_Touchscreen
-global	GLCD_delay_ms
+global	GLCD_delay_ms, GLCD_Send_Screen
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
 GLCD_cnt_h:	ds 1	; reserve 1 byte for variable LCD_cnt_h
 GLCD_cnt_2:	ds 1
 GLCD_cnt_ms:	ds 1	; reserve 1 byte for ms counter
+Send_cnt:	ds 1    ; counter to send data
+Send_cnt_2:	ds 1
 Col_index:	ds 1	; What col do we want to go to
 Row_index:	ds 1
 x:		ds 1	; x position we want to write to
@@ -27,7 +30,7 @@ Clear_cnt_2:	ds 1	; Variable to loop clear screen over
 Page_width:	ds 1	;Variable to hold half screen width
 temp_adresl:	ds 1
 draw:		ds 1	; Variable to hold draw bit
- 
+test_cnt:	ds 1
   
 PSECT	udata_acs_ovr,space=1,ovrld,class=COMRAM
 
@@ -268,6 +271,36 @@ Clear_screen_loop:
 	goto	Clear_screen_loop   ; If not loop
 	return
 
+GLCD_Send_Line:
+	call	GLCD_Set_Row	    ; Go to row specified by WREG
+	movlw	0x00		    ; Reset clear counter here before beginning
+	movwf	Send_cnt
+Send_loop:
+	call	GLCD_Read	    ; Don't need to increment col as X incremented when Read called
+	movf	read_byte, W
+	call	UART_Transmit_Byte  ; Send data in W to port
+	incf	Send_cnt, 1, 0	    ; Increment until we reach 0x40 = 64
+	movlw	0x80		    ; 0x40 = 64 or 0x3F = 63?
+	cpfseq	Send_cnt	    ; Only skip when Clear_cnt = 0x40
+	goto	Send_loop
+	return
+	
+GLCD_Send_Screen:
+	movlw	0x00		    ; Reset clear row counter
+	movwf	Send_cnt_2
+	movlw	's'		    ; the send byte so our python script knows when we've started transmitting
+	call	UART_Transmit_Byte  ; Send data in W to port
+Send_screen_loop:
+	movf	Send_cnt_2, 0, 0   ; Move current value to WREG, this is the row supplied to Clear_Line
+	call	GLCD_Send_Line	    ; Clear given Line/row
+	incf	Send_cnt_2, 1, 0   ; Increment clear counter
+	movlw	0x08		    ; 8 rows -> 8 times
+	cpfseq	Send_cnt_2	    ; Skip if eq to 8
+	goto	Send_screen_loop   ; If not loop
+	movlw	'f'		    ; the finished byte so scipt knows when finished
+	call	UART_Transmit_Byte  ; Send data in W to port
+	return
+	
 GLCD_Set_Line:			    ; Given line addr in WREG start line threre
 	bcf	LATB, GLCD_RS
 	bcf	LATB, GLCD_RW
@@ -293,6 +326,8 @@ GLCD_Setup:
 	movwf	Page_width	    ; The 'width' of the page - 63, used for chip sel in set_col
 	movlw	0x00		    ; Set draw bit to 0
 	movwf	draw
+	movlw	0x00
+	movwf	test_cnt
 	
 	call	GLCD_On		    ; Turn on the GLCD
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
@@ -372,8 +407,11 @@ GLCD_Touchscreen:
 	movlw	0x00		    ; reset draw bit
 	movwf	draw, A
 	
-	movlw	20
+	movlw	10
 	call	GLCD_delay_ms
+	
+	;infsnz	test_cnt
+	;call	GLCD_Send_Screen
 	
 	goto	GLCD_Touchscreen    ; loop
 	return

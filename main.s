@@ -1,6 +1,7 @@
 #include <xc.inc>
 
 extrn	GLCD_Setup, GLCD_Draw, GLCD_On, GLCD_Write, GLCD_Test, GLCD_Touchscreen, GLCD_Off
+extrn	UART_Setup, GLCD_Send_Screen
 extrn	ADC_Init
     
 psect	udata_acs
@@ -12,6 +13,7 @@ main:
 	call	GLCD_On
 	call	GLCD_Setup
 	call	ADC_Init
+	call	UART_Setup
 	call	GLCD_Touchscreen
 	end	main
 
