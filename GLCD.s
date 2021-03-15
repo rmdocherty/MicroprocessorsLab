@@ -276,6 +276,8 @@ GLCD_Send_Line:
 	movlw	0x00		    ; Reset clear counter here before beginning
 	movwf	Send_cnt
 Send_loop:
+	movf	Send_cnt, W
+	call	GLCD_Set_Col	    ; Set correct colum using send count
 	call	GLCD_Read	    ; Don't need to increment col as X incremented when Read called
 	movf	read_byte, W
 	call	UART_Transmit_Byte  ; Send data in W to port

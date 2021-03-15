@@ -20,6 +20,7 @@
       <itemPath>GLCD.s</itemPath>
       <itemPath>Interrupt.s</itemPath>
       <itemPath>TouchEvent.s</itemPath>
+      <itemPath>Keypad.s</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -41,7 +42,7 @@
         <platformTool>pk4hybrid</platformTool>
         <languageToolchain>pic-as</languageToolchain>
         <languageToolchainVersion>2.31</languageToolchainVersion>
-        <platform>4</platform>
+        <platform>3</platform>
       </toolsSet>
       <packs>
         <pack name="PIC18F-K_DFP" vendor="Microchip" version="1.4.87"/>
