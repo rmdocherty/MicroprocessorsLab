@@ -58,12 +58,11 @@ x_div_finish:
 	movf	x_counter, W		; Move counter value to W as finished
 	return
 
-move_adres_Y:		; Should be called before Convert_X
-	movff   ADRESL, y_voltage_l	; Moving ADRES value to x_voltage (low,high)
+move_adres_Y:		; Should be called before Convert_Y
+	movff   ADRESL, y_voltage_l	; Moving ADRES value to y_voltage (low,high)
 	movff   ADRESH, y_voltage_h
 	movlw	0x00
-	movwf	y_counter, A		; Reset x-counter to zero
-;	incf	x_voltage_h, A		; Increment high voltage by 1
+	movwf	y_counter, A		; Reset y-counter to zero
 	movlw	0x40			; Moving 64 to inversion constant (for subtraction later)
 	movwf	inv_const, A
 	movlw	11110100B

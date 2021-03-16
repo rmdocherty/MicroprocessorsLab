@@ -254,34 +254,34 @@ Draw_finish:
 GLCD_Square_Brush:	; draw square of dims (r, r) centred on (x,y) touch event
 
 	rrncf	brush_size, W, A    ; find r/2, store result in W
-	subwf	x, F, A	    ; x - r/2, store in W
+	bcf	WREG, 7, A	    ; RRNCF maps odd numbers to 128 - bs, i.e 0001 rrncf -> 1000 so need to clear last bit in WREG
+	subwf	x, F, A		    ; x - r/2, store in W
 	subwf	y,  F, A	    ; y - r/2, store in W
 	movff	x, x_min, A	    ; save x - r/2 in y_min
 	
-	movf	brush_size, W, A
+	movf	brush_size, W, A    
 	addwf	x, W, A
-	movwf	x_max, A
+	movwf	x_max, A	    ; calc x_max by adding it to X
 	
-	;rrncf	brush_size, W, A    ; find r/2, store result in W
 	
-	movf	brush_size, W, A
+	movf	brush_size, W, A    ; calc y_max
 	addwf	y, W, A
 	movwf	y_max, A
 	
 x_loop:
-	call	GLCD_Draw_Pixel
-	incf	x, F, A
-	movf	x, W
-	cpfseq	x_max
+	call	GLCD_Draw_Pixel	    ; draw a pixel at (x,y). On first loop this is (x_min, y_min)
+	incf	x, F, A		    ; inc x each time
+	movf	x, W		    
+	cpfseq	x_max		    ; compare this to x_max - if we are at x max go to y loop (i.e go up a row)
 	goto	x_loop
 	goto	y_loop
 	
 y_loop:
-	movff	x_min, x, A
-	incf	y, F, A
-	movf	y, W
-	cpfseq	y_max
-	goto	x_loop
+	movff	x_min, x, A	    ; reset x
+	incf	y, F, A		    ; increase y by 1
+	movf	y, W	 
+	cpfseq	y_max		    ; compare this to y_max, if equal skip and finish drawing
+	goto	x_loop		    ; else loop
 	return
 	
 GLCD_Clear_Line:
@@ -368,7 +368,7 @@ GLCD_Setup:
 	movwf	draw
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
-	movlw	0x02
+	movlw	0x03		    ; Set default brush size
 	movwf	brush_size
 
 	
@@ -425,9 +425,9 @@ GLCD_Touchscreen:
 	movlw	1
 	call	GLCD_delay_x4us
 	
-	movf	0xFF
-	cpfseq	PORTJ
-	call	Keypad_master
-
+	movf	0xFF		    ; Compare PORTJ to non press voltages
+	cpfseq	PORTJ		    ; Because we setup keypad row earlier the voltages on J will vary on presse even if doing other stuff
+	call	Keypad_master	    ; If the voltages vary then call KEypad_Master to get what key was pressed
+				    ; This is effectively polling but works well 
 	goto	GLCD_Touchscreen    ; loop
 	return
