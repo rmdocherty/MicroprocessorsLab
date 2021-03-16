@@ -113,8 +113,8 @@ LCD_Send_Byte_I:	    ; Transmits byte stored in W to instruction reg
 	bcf	LATH, LCD_RS, A	; Instruction write clear RS bit
         call    LCD_Enable  ; Pulse enable Bit 
 	return
-LCD_Shift:		    ; Shifts LCD cursor
-	movlw   00011100B
+LCD_Shift:		    ; Shifts LCD cursor, without shifting display (S/C low)
+	movlw   00010100B
 	call    LCD_Send_Byte_I  ; Send this byte to the instruction register
 	return
 LCD_Disable_Cursor:
@@ -410,12 +410,12 @@ move_cursor:	    ; Shifts cursor to right - moves to second row after 40th char 
 	decfsz  0x20
 	bra     move_cursor
 	return
-def_change_row:	    ; Default change row (for default brush size/status display)
-;	movlw	0x1C	; Shift 28 times
-	movlw	0x1C
-	movwf	0x20
-	call	move_cursor
+
+change_row:	    ; Change row. Change address in DDRAM to 0x40 (second row)
+	movlw	11000000B
+	call	LCD_Send_Byte_I
 	return
+	
 comparison_setup:	; Setup of comparison variables
     	movlw	0x00
 	movwf	erase, A    ; 0 moved to erase
@@ -424,8 +424,8 @@ comparison_setup:	; Setup of comparison variables
 	return
 	
 update_display:		; Update of display (call whenever brush size changed?)
-	call	comparison_setup
-	call	write_setup
+	call	comparison_setup	; Setup of comparison variables for row 2
+	call	write_setup		; Setup for LCD writing
 	call	LCD_Clear_Screen
 	movlw	0x01
 	call	LCD_delay_x4us
@@ -440,7 +440,7 @@ update_display:		; Update of display (call whenever brush size changed?)
 	
 	movlw	0x04
 	call	LCD_delay_x4us ; 16us delay
-	call	def_change_row
+	call	change_row
 	call	W_Colour    ; Move colour to W
 	cpfseq	erase	    ; Erase mode display if colour = 0
 	call	drawing
@@ -461,19 +461,6 @@ erasing:    ; Displays 'Erasing...' on LCD
 	movlw	0x00
 	movwf	colour, A
 	return
-s_change_row:	    ; Change row (for Sending via UART message)
-;	call	LCD_Shift
-	movlw	0x21		; Shift cursor 33 times
-	movwf	0x20
-	call	move_cursor
-	return
-r_change_row:	    ; Change row (for Receiving via UART message)
-;	call	LCD_Shift
-;	movlw	0x1C
-	movlw	0x1F		; Shift cursor 31 times
-	movwf	0x20
-	call	move_cursor
-	return
 sending_display:		; Display when image is sent via UART
 	call	write_setup
 	call	LCD_Clear_Screen
@@ -484,7 +471,7 @@ sending_display:		; Display when image is sent via UART
 	
 	movlw	0x04
 	call	LCD_delay_x4us ; 16us delay
-	call	s_change_row
+	call	change_row
 	call	u_write_start
 	call	u_write_loop
 	return
@@ -498,7 +485,7 @@ receiving_display:	    ; Display when image is received via UART
 	
 	movlw	0x04
 	call	LCD_delay_x4us ; 16us delay
-	call	r_change_row
+	call	change_row
 	call	u_write_start
 	call	u_write_loop
 	return

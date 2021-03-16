@@ -357,6 +357,7 @@ Send_screen_loop:
 	goto	Send_screen_loop   ; If not loop
 	movlw	'f'		    ; the finished byte so scipt knows when finished
 	call	UART_Transmit_Byte  ; Send data in W to port
+	call	update_display
 	return
 	
 GLCD_Set_Line:			    ; Given line addr in WREG start line threre

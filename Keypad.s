@@ -4,7 +4,7 @@ global Keypad_master, Row_setup
 extrn  GLCD_Clear_Screen, GLCD_Send_Screen
 extrn  Toggle_Pen, Set_Brushsize
 extrn  GLCD_delay_ms
-extrn  update_display
+extrn  update_display, sending_display
 
 psect	udata_acs
 Keypad_Row:	ds 1
@@ -145,6 +145,7 @@ a_press:
 	movlw	01111110B  ; Binary code for the A input
 	cpfseq	Result, A
 	goto	b_press;infsnz	Skip, A
+	call	sending_display
 	call	GLCD_Send_Screen
 	;retlw	'A'
 	
@@ -172,6 +173,7 @@ e_press:
 	cpfseq	Result, A
 	goto	f_press;infsnz	Skip, A
 	call	Toggle_Pen
+	call	update_display	   ; Update brush size on display
 	;retlw	'E'
 
 f_press:
