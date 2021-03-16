@@ -3,11 +3,12 @@
 extrn	ADC_Setup_X, ADC_Setup_Y, ADC_Read, move_adres_X, Convert_X, move_adres_Y, Convert_Y
 extrn	UART_Transmit_Byte
 extrn	Keypad_master, Row_setup
+extrn	update_display
 global	GLCD_Setup, GLCD_Write, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms, GLCD_Send_Screen
 global	GLCD_Clear_Screen
 global	Toggle_Pen, Set_Brushsize
-global	W_Brushsize, W_Colour
+global	W_Brushsize, W_Colour, colour
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l

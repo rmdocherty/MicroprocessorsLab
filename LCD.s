@@ -1,7 +1,7 @@
 #include <xc.inc>
 
-global  LCD_Setup, LCD_Write_Message, LCD_Clear_Screen, LCD_Change_level, update_display, sending_display, receiving_display
-extrn	UART_Setup, UART_Transmit_Message, W_Brushsize, W_Colour  ; external subroutines
+global  LCD_Setup, LCD_Write_Message, LCD_Clear_Screen, LCD_Shift, update_display, sending_display, receiving_display
+extrn	UART_Setup, UART_Transmit_Message, W_Brushsize, W_Colour, colour  ; external subroutines
 
 psect	udata_acs   ; named variables in access ram
 LCD_cnt_l:	ds 1   ; reserve 1 byte for variable LCD_cnt_l
@@ -113,8 +113,8 @@ LCD_Send_Byte_I:	    ; Transmits byte stored in W to instruction reg
 	bcf	LATH, LCD_RS, A	; Instruction write clear RS bit
         call    LCD_Enable  ; Pulse enable Bit 
 	return
-LCD_Change_level:
-	movlw   11100B
+LCD_Shift:		    ; Shifts LCD cursor
+	movlw   00011100B
 	call    LCD_Send_Byte_I  ; Send this byte to the instruction register
 	return
 LCD_Disable_Cursor:
@@ -196,6 +196,7 @@ lcdlp1:	decf 	LCD_cnt_l, F, A	; no carry when 0x00 -> 0xff
 
 	; ******* Programme FLASH read Setup Code ***********************
 write_setup:	
+	call	cursor_home
 	bcf	CFGS	; point to Flash program memory  
 	bsf	EEPGD 	; access Flash program memory
 	call	UART_Setup	; setup UART
@@ -404,17 +405,14 @@ delay3:
 	movwf   third_delay_count
 	return	
 	
-move_cursor:
-	call    LCD_Change_level
+move_cursor:	    ; Shifts cursor to right - moves to second row after 40th char of line 1
+	call    LCD_Shift    ; Shift cursor right (w/o display shift) - executed a given number of times.
 	decfsz  0x20
 	bra     move_cursor
-	movlw   0x28
-	movwf   0x20
 	return
 def_change_row:	    ; Default change row (for default brush size/status display)
-	call	LCD_Change_level
-;	movlw	0x1C
-	movlw	0x0F
+;	movlw	0x1C	; Shift 28 times
+	movlw	0x1C
 	movwf	0x20
 	call	move_cursor
 	return
@@ -454,22 +452,25 @@ update_display:		; Update of display (call whenever brush size changed?)
 drawing:    ; Displays 'Drawing...' on LCD
     	call	d_write_start
 	call	d_write_loop
+	movlw	0x01
+	movwf	colour, A
 	return
 erasing:    ; Displays 'Erasing...' on LCD
     	call	e_write_start
 	call	e_write_loop
+	movlw	0x00
+	movwf	colour, A
 	return
 s_change_row:	    ; Change row (for Sending via UART message)
-	call	LCD_Change_level
-;	movlw	0x1C
-	movlw	0x0F
+;	call	LCD_Shift
+	movlw	0x21		; Shift cursor 33 times
 	movwf	0x20
 	call	move_cursor
 	return
 r_change_row:	    ; Change row (for Receiving via UART message)
-	call	LCD_Change_level
+;	call	LCD_Shift
 ;	movlw	0x1C
-	movlw	0x1C
+	movlw	0x1F		; Shift cursor 31 times
 	movwf	0x20
 	call	move_cursor
 	return
@@ -500,6 +501,10 @@ receiving_display:	    ; Display when image is received via UART
 	call	r_change_row
 	call	u_write_start
 	call	u_write_loop
+	return
+cursor_home:
+	movlw	00000010B
+	call	LCD_Send_Byte_I
 	return
     end
 

@@ -4,12 +4,14 @@ global Keypad_master, Row_setup
 extrn  GLCD_Clear_Screen, GLCD_Send_Screen
 extrn  Toggle_Pen, Set_Brushsize
 extrn  GLCD_delay_ms
+extrn  update_display
 
 psect	udata_acs
 Keypad_Row:	ds 1
 Keypad_Col:	ds 1
 Result:		ds 1
 Skip:		ds 1
+Tmp_result:	ds 1
     
 psect	keypad_code,class=CODE
     
@@ -57,6 +59,7 @@ one:
 	goto	two ;infsnz	Skip, A
 	movlw	0x01
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x01
 
 two:
@@ -65,6 +68,7 @@ two:
 	goto	three ; infsnz	Skip, A
 	movlw	0x02
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x02
 
 three:
@@ -73,6 +77,7 @@ three:
 	goto	four;infsnz	Skip, A
 	movlw	0x03
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x03
 	
 four:
@@ -81,6 +86,7 @@ four:
 	goto	five;infsnz	Skip, A
 	movlw	0x04
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x04
 
 five:
@@ -89,6 +95,7 @@ five:
 	goto	six ;infsnz	Skip, A
 	movlw	0x05
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x05	
 
 six:
@@ -97,6 +104,7 @@ six:
 	goto	seven;infsnz	Skip, A
 	movlw	0x06
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x06
 
 seven:
@@ -105,6 +113,7 @@ seven:
 	goto	eight ;infsnz	Skip, A
 	movlw	0x07
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x07
 
 eight:
@@ -113,6 +122,7 @@ eight:
 	goto	nine;infsnz	Skip, A
 	movlw	0x08
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x08
 
 nine:
@@ -121,6 +131,7 @@ nine:
 	goto	zero;infsnz	Skip, A
 	movlw	0x09
 	call	Set_Brushsize
+	call	update_display	   ; Update brush size on display
 	retlw	0x09
 	;retlw	'9'
 
@@ -184,5 +195,7 @@ Keypad_master:
 	call	GLCD_delay_ms ; Delay to avoid double triggers
 	call	Read_col    ; Read the value
 	call	Decode	    ; Throw this bit pattern into decode which stores result in W
-	
+;	movwf	Tmp_result, A	   ; Store result in Tmp_result for now
+;	call	update_display	   ; Update brush size on display
+;	movf	Tmp_result, A	   ; Return result of decoding to W
 	return
