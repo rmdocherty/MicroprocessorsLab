@@ -28,41 +28,71 @@ move_adres_X:		; Should be called before Convert_X
 	movff   ADRESH, x_voltage_h
 	movlw	0x00
 	movwf	x_counter, A		; Reset x-counter to zero
-;	incf	x_voltage_h, A		; Increment high voltage by 1
 	movlw	00101100B
-	subwf	x_voltage_l, F, A
+	subwf	x_voltage_l, F, A	; Subtract low byte of offest from xl
+	btfss   STATUS, 0		; If subtracting the low offset causes carry, dec high byte
+        decf	x_voltage_h, F, A	 
+	decf	x_voltage_h, F, A	; Decf again to subtract 1 from high byte
 	return
 		
 Convert_X:
+	tstfsz	x_voltage_h		; Check if xh = 0, if it is skip and start dividing low byte only
+	goto	x_divide_high		; If xh != 0 still need to subtract w/ carry
+	goto	x_divide_low
+	
+x_divide_high:
 	incf	x_counter, A		; Increment division counter
 	movlw	0x19			; Move 25 (decimal) to W
         subwf	x_voltage_l, F, A	; Subtract 25 from low 8-bit 
         btfss   STATUS, 0		; Check if carry bit (bit 0 of STATUS) is 1, if not, skip next
         decfsz  x_voltage_h, F, A	; If carry = 1, decrement high 8-bit
 	bra	Convert_X		; Loop again
-	movf	x_counter, W		; Move counter value to W if high 8-bit is zero
+x_divide_low:
+	movlw	0x19
+	cpfsgt	x_voltage_l		; skip if xl > scale factor
+	goto	x_div_finish
+	subwf	x_voltage_l, F, A	; Subtract 25 from low 8-bit 
+	incf	x_counter, A		; Increment division counter
+	goto	x_divide_low		; Loop
+x_div_finish:
+	movf	x_counter, W		; Move counter value to W as finished
 	return
 
-move_adres_Y:		; Should be called before Convert_Y
-	movff   ADRESL, y_voltage_l	; Moving ADRES value to y_voltage (low,high)
+move_adres_Y:		; Should be called before Convert_X
+	movff   ADRESL, y_voltage_l	; Moving ADRES value to x_voltage (low,high)
 	movff   ADRESH, y_voltage_h
+	movlw	0x00
+	movwf	y_counter, A		; Reset x-counter to zero
+;	incf	x_voltage_h, A		; Increment high voltage by 1
 	movlw	0x40			; Moving 64 to inversion constant (for subtraction later)
 	movwf	inv_const, A
-	movlw	0x00
-	movwf	y_counter, A		; Reset y-counter to zero
-;	incf	y_voltage_h, A		; Increment high voltage by 1
 	movlw	11110100B
 	subwf	y_voltage_l, F, A
+	btfss   STATUS, 0		; If subtracting the low offset causes carry, dec high byte
+        decf	y_voltage_h, F, A	
+	decf	y_voltage_h, F, A	; Decf again to subtract 1 from high byte
 	return
 		
 Convert_Y:
+	tstfsz	y_voltage_h
+	goto	y_divide_high
+	goto	y_divide_low
+	
+y_divide_high:
 	incf	y_counter, A		; Increment division counter
-	movlw	0x2C			; Move 44 (decimal) to W
-        subwf	y_voltage_l, F, A	; Subtract 44w from low 8-bit 
+	movlw	0x2C			; Move 25 (decimal) to W
+        subwf	y_voltage_l, F, A	; Subtract 25 from low 8-bit 
         btfss   STATUS, 0		; Check if carry bit (bit 0 of STATUS) is 1, if not, skip next
         decfsz  y_voltage_h, F, A	; If carry = 1, decrement high 8-bit
 	bra	Convert_Y		; Loop again
-	movf	y_counter, W		; Move counter value to W if high 8-bit is 0
-	subwf	inv_const, W		; Subtract counter from 64 and place back in W
+y_divide_low:
+	movlw	0x2C
+	cpfsgt	y_voltage_l		; skip if xl > scale factor
+	goto	y_div_finish
+	subwf	y_voltage_l, F, A	; Subtract 25 from low 8-bit 
+	incf	y_counter, A		; Increment division counter
+	goto	y_divide_low
+y_div_finish:
+	movf	y_counter, W		; Move counter value to W if high 8-bit is zero
+	subwf	inv_const, W
 	return
-	

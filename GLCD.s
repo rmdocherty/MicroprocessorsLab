@@ -6,7 +6,7 @@ extrn	Keypad_master, Row_setup
 global	GLCD_Setup, GLCD_Write, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms, GLCD_Send_Screen
 global	GLCD_Clear_Screen
-global	Toggle_Pen
+global	Toggle_Pen, Set_Brushsize
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -376,11 +376,15 @@ GLCD_Setup:
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
 	call	Row_setup
 	return
-
-Toggle_Pen:
+	
+Toggle_Pen:	    ; toggle pen on or off
 	btg	colour, 0, A
 	return
 
+Set_Brushsize:	    ;given brush size in W, set this to brush size
+	movwf	brush_size
+	return
+	
 Set_X:	
 	call	move_adres_X	    ; move ADRES to variables
 	call	Convert_X	    ; operate on variables to convert to X pixel
@@ -418,7 +422,7 @@ GLCD_Touchscreen:
 	movlw	0x00		    ; reset draw bit
 	movwf	draw, A
 	
-	movlw	10
+	movlw	1
 	call	GLCD_delay_x4us
 	
 	movf	0xFF

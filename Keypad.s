@@ -54,47 +54,48 @@ Decode:
 	movlw	11101110B  ; Binary code for the 1 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'1'
+	retlw	0x01
 
 	movlw	11101101B  ; Binary code for the 2 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'2'
+	retlw	0x02
 	
 	movlw	11101011B  ; Binary code for the 3 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'3'
+	retlw	0x03
 
 	movlw	11011110B  ; Binary code for the 4 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'4'	
+	retlw	0x04
 	
 	movlw	11011101B  ; Binary code for the 5 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'5'	
+	retlw	0x05	
 	
 	movlw	11011011B  ; Binary code for the 6 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'6'
+	retlw	0x06
 
 	movlw	10111110B  ; Binary code for the 7 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'7'
+	retlw	0x07
 	
 	movlw	10111101B  ; Binary code for the 8 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'8'
+	retlw	0x08
 
 	movlw	10111011B  ; Binary code for the 9 input
 	cpfseq	Result, A
 	infsnz	Skip, A
-	retlw	'9'
+	retlw	0x09
+	;retlw	'9'
 	
 	movlw	01111101B  ; Binary code for the 0 input
 	cpfseq	Result, A
@@ -133,8 +134,10 @@ Decode:
 	cpfseq	Result, A
 	infsnz	Skip, A
 	retlw	'F'
-	
+
+no_key_pressed:
 	retlw	0xFF	    ; Else return error
+
 Keypad_master:
 	movlw	0x01	    ; Reset the skip variable
 	movwf	Skip, A	    ; Move this to skip
