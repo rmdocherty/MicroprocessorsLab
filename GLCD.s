@@ -7,6 +7,7 @@ global	GLCD_Setup, GLCD_Write, GLCD_On, GLCD_Off, GLCD_Touchscreen
 global	GLCD_delay_ms, GLCD_Send_Screen
 global	GLCD_Clear_Screen
 global	Toggle_Pen, Set_Brushsize
+global	W_Brushsize, W_Colour
     
 psect	udata_acs   ; named variables in access ram
 GLCD_cnt_l:	ds 1	; reserve 1 byte for variable LCD_cnt_l
@@ -368,9 +369,8 @@ GLCD_Setup:
 	movwf	draw
 	movlw	0x01
 	movwf	colour		    ; Draw in 'black'
-	movlw	0x03		    ; Set default brush size
+	movlw	0x02		    ; Set default brush size
 	movwf	brush_size
-
 	
 	call	GLCD_On		    ; Turn on the GLCD
 	call	GLCD_Clear_Screen   ; Clear screen by writing 0's to everything
@@ -385,6 +385,12 @@ Set_Brushsize:	    ;given brush size in W, set this to brush size
 	movwf	brush_size
 	return
 	
+W_Brushsize:	    ; Move brush size to W (for display purposes)
+	movf	brush_size, W
+	return
+W_Colour:
+	movf	colour, W
+	return
 Set_X:	
 	call	move_adres_X	    ; move ADRES to variables
 	call	Convert_X	    ; operate on variables to convert to X pixel

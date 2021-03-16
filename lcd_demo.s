@@ -2,6 +2,7 @@
 ; Main program file - converted over from LCD branch. Include in main.s for setup or call as separate module.
 extrn	UART_Setup, UART_Transmit_Message  ; external subroutines
 extrn	LCD_Setup, LCD_Write_Message, LCD_Clear_Screen, LCD_Change_level
+global	myTable
 	
 psect	udata_acs   ; reserve data space in access ram
 counter:    ds 1    ; reserve one byte for a counter variable
@@ -34,7 +35,8 @@ setup:	bcf	CFGS	; point to Flash program memory
 	goto	start
 	
 	; ******* Main programme ****************************************
-start: 	lfsr	0, myArray	; Load FSR0 with address in RAM	
+write_start: 	
+	lfsr	0, myArray	; Load FSR0 with address in RAM	
 	movlw	low highword(myTable)	; address of data in PM
 	movwf	TBLPTRU, A		; load upper bits to TBLPTRU
 	movlw	high(myTable)	; address of data in PM
@@ -43,10 +45,11 @@ start: 	lfsr	0, myArray	; Load FSR0 with address in RAM
 	movwf	TBLPTRL, A		; load low byte to TBLPTRL
 	movlw	myTable_l	; bytes to read
 	movwf 	counter, A		; our counter register
-loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
+write_loop: 	
+	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
 	movff	TABLAT, POSTINC0; move data from TABLAT to (FSR0), inc FSR0	
 	decfsz	counter, A		; count down to zero
-	bra	loop		; keep going until finished
+	bra	write_loop		; keep going until finished
 		
 	movlw	myTable_l	; output message to UART
 	lfsr	2, myArray
@@ -88,20 +91,19 @@ loop: 	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
 	goto	$		; goto current line in code
 
 	; a delay subroutine if you need one, times around loop in delay_count
-delay:	decfsz	delay_count, A	; decrement until zero
+delay:	
+	call	delay2
+	decfsz	delay_count, A	; decrement until zero
 	bra	delay
 	return
 delay2: 
-        call    delay
-	movlw   0xFF
-	movwf   delay_count
+        call    delay3
         decfsz  second_delay_count, A
 	bra     delay2
 	movlw   0xFF
 	movwf   second_delay_count
 	return
 delay3:
-        call    delay2
 	decfsz  third_delay_count, A
 	bra     delay3
 	movlw   0xFF
