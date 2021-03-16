@@ -299,15 +299,31 @@ Clear_loop:
 	return
 	
 GLCD_Clear_Screen:
+	nop
+Clear_Screen_L:			    ; Clearing LHS of screen
 	movlw	0x00		    ; Reset clear row counter
 	movwf	Clear_cnt_2
-Clear_screen_loop:
+	bcf	LATB, GLCD_CS1, A  ; CS1 = 0
+	bsf	LATB, GLCD_CS2, A  ; CS2 = 1
+Clear_screen_loop1:
 	movf	Clear_cnt_2, 0, 0   ; Move current value to WREG, this is the row supplied to Clear_Line
 	call	GLCD_Clear_Line	    ; Clear given Line/row
 	incf	Clear_cnt_2, 1, 0   ; Increment clear counter
 	movlw	0x08		    ; 8 rows -> 8 times
 	cpfseq	Clear_cnt_2	    ; Skip if eq to 8
-	goto	Clear_screen_loop   ; If not loop
+	goto	Clear_screen_loop1   ; If not loop
+Clear_Screen_R:			    ; Clearing RHS of screen
+	movlw	0x00		    ; Reset clear row counter
+	movwf	Clear_cnt_2
+	bsf	LATB, GLCD_CS1, A  ; CS1 = 1
+	bcf	LATB, GLCD_CS2, A  ; CS2 = 0
+Clear_screen_loop2:
+	movf	Clear_cnt_2, 0, 0   ; Move current value to WREG, this is the row supplied to Clear_Line
+	call	GLCD_Clear_Line	    ; Clear given Line/row
+	incf	Clear_cnt_2, 1, 0   ; Increment clear counter
+	movlw	0x08		    ; 8 rows -> 8 times
+	cpfseq	Clear_cnt_2	    ; Skip if eq to 8
+	goto	Clear_screen_loop2   ; If not loop
 	return
 
 GLCD_Send_Line:
