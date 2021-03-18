@@ -333,17 +333,21 @@ GLCD_Send_Line:
 	movwf	Send_cnt
 Send_loop:
 	movf	Send_cnt, W
-	call	GLCD_Set_Col	    ; Set correct colum using send count
+;	call	GLCD_Set_Col	    ; Set correct colum using send count
 	call	GLCD_Read	    ; Don't need to increment col as X incremented when Read called
 	movf	read_byte, W
 	call	UART_Transmit_Byte  ; Send data in W to port
 	incf	Send_cnt, 1, 0	    ; Increment until we reach 0x40 = 64
-	movlw	0x80		    ; 0x40 = 64 or 0x3F = 63?
+	movlw	0x40		    ; 0x40 = 64 or 0x3F = 63?
 	cpfseq	Send_cnt	    ; Only skip when Clear_cnt = 0x40
 	goto	Send_loop
 	return
 	
 GLCD_Send_Screen:
+	nop
+Send_L:
+    	bcf	LATB, GLCD_CS1, A  ; CS1 = 0
+	bsf	LATB, GLCD_CS2, A  ; CS2 = 1
 	movlw	0x00		    ; Reset clear row counter
 	movwf	Send_cnt_2
 	movlw	's'		    ; the send byte so our python script knows when we've started transmitting
@@ -355,6 +359,18 @@ Send_screen_loop:
 	movlw	0x08		    ; 8 rows -> 8 times
 	cpfseq	Send_cnt_2	    ; Skip if eq to 8
 	goto	Send_screen_loop   ; If not loop
+Send_R:
+	bsf	LATB, GLCD_CS1, A  ; CS1 = 1
+	bcf	LATB, GLCD_CS2, A  ; CS2 = 0
+	movlw	0x00		    ; Reset clear row counter
+	movwf	Send_cnt_2
+Send_screen_loop_r:
+	movf	Send_cnt_2, 0, 0   ; Move current value to WREG, this is the row supplied to Clear_Line
+	call	GLCD_Send_Line	    ; Clear given Line/row
+	incf	Send_cnt_2, 1, 0   ; Increment clear counter
+	movlw	0x08		    ; 8 rows -> 8 times
+	cpfseq	Send_cnt_2	    ; Skip if eq to 8
+	goto	Send_screen_loop_r   ; If not loop
 	movlw	'f'		    ; the finished byte so scipt knows when finished
 	call	UART_Transmit_Byte  ; Send data in W to port
 	call	update_display

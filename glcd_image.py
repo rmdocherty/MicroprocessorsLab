@@ -12,23 +12,24 @@ from PIL import Image
 
 temp_list = []
 byte_list = []
-image_arr = np.zeros((128, 64), dtype=np.uint8)
+image_arr = np.zeros((64, 128), dtype=np.uint8)
 start_flag = False
 end_flag = False
 
-with serial.Serial('COM3', 9600) as ser:
+# with serial.Serial('COM3', 9600) as ser:
+with serial.Serial('/dev/tty.usbserial-AG0JH0GF', 9600) as ser:
     while start_flag is False:
         x = ser.read()
         converted = int.from_bytes(x, "big")
         if x == b's':
-            print("Begun recieving from UART!")
+            print("Begun receiving from UART!")
             start_flag = True
             byte_list.append(x)
     while end_flag is False:
         x = ser.read()
         byte_list.append(x)
         if x == b'f':
-            print("Finished recieving from UART!")
+            print("Finished receiving from UART!")
             end_flag = True
     ser.close()
 
@@ -43,15 +44,30 @@ def fill_bin(x):
         bin_out = "0" + bin_out
     return bin_out
 
-
-for index, b in enumerate(int_list):
-    current_col = index % 128
-    current_row = index // 128
+# print(len(int_list))
+for index, b in enumerate(int_list[0:511]):
+    current_col = index % 64
+    current_row = index // 64
     binary_pattern = format(b, 'b')
     filled_pattern = fill_bin(binary_pattern)
     pattern_list = [int(c) for c in filled_pattern]
-    for index, i in enumerate(pattern_list):
-        image_arr[current_col, 8 * current_row + index] = i
+    for index2, i in enumerate(pattern_list):
+        y_ind = 8 * current_row + index2
+        image_arr[y_ind, current_col] = i
+
+for index, b in enumerate(int_list[512:]):
+    current_col = (index % 64) + 64
+    current_row = index // 64
+    binary_pattern = format(b, 'b')
+    filled_pattern = fill_bin(binary_pattern)
+    pattern_list = [int(c) for c in filled_pattern]
+    for index2, i in enumerate(pattern_list):
+        y_ind = 8 * current_row + index2
+        image_arr[y_ind, current_row] = i
+    # indstart = current_row + index
+    # indend = current_row + index + 8
+    # print(f'{indend - indstart}, len {len(pattern_list)}')
+    # image_arr[current_col, indstart:indend] = pattern_list
 
 
 #%%
