@@ -122,12 +122,14 @@ GLCD_Off:			    ; Turn off display
 	return
 	
 GLCD_Set_Col:			    ; Given value in W go set that x value in GLCD
-	movwf	Col_index	    ; Store WREG in Col_index
 	bcf	LATB, GLCD_RS, A   ; RS being low means it's a command
 	bcf	LATB, GLCD_RW, A   ; R/W low means write
-	cpfsgt	Page_width, A	    ; if x > 63 goto RHS, else goto LHS 
-	goto	RHS		    ; switch statement
+	movwf	Col_index	    ; Store WREG in Col_index
+	movf	Page_width, W
+	cpfsgt	Col_index, A	    ; if x > 63 goto RHS, else goto LHS 
 	goto	LHS
+	goto	RHS		    ; switch statement
+;	goto	LHS
 LHS:
 	bcf	LATB, GLCD_CS1, A  ; CS1 = 0, select chip 1
 	bsf	LATB, GLCD_CS2, A  ; CS2 = 1, deselect chip 2
