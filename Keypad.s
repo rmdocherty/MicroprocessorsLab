@@ -4,7 +4,7 @@ global Keypad_master, Row_setup
 extrn  GLCD_Clear_Screen, GLCD_Send_Screen
 extrn  Toggle_Pen, Set_Brushsize
 extrn  GLCD_delay_ms
-extrn  update_display, sending_display
+extrn  update_display, sending_display, clearing_display
 
 psect	udata_acs
 Keypad_Row:	ds 1
@@ -160,6 +160,8 @@ c_press:
 	cpfseq	Result, A
 	goto	d_press;infsnz	Skip, A
 	call	GLCD_Clear_Screen
+	call	clearing_display
+	call	update_display
 	;retlw	'C'
 
 d_press:

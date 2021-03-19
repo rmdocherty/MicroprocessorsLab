@@ -1,6 +1,6 @@
 #include <xc.inc>
 
-global  LCD_Setup, LCD_Write_Message, LCD_Clear_Screen, LCD_Shift, update_display, sending_display, receiving_display
+global  LCD_Setup, LCD_Write_Message, LCD_Clear_Screen, LCD_Shift, update_display, sending_display, receiving_display, clearing_display
 extrn	UART_Setup, UART_Transmit_Message, W_Brushsize, W_Colour, colour  ; external subroutines
 
 psect	udata_acs   ; named variables in access ram
@@ -50,6 +50,10 @@ receiving_Table:
 UART_Table:
 	db	'v','i','a',' ','U','A','R','T','.','.','.',0x0a
 	UART_Table_l	EQU	12
+	align	2
+clear_Table:
+	db	'C','l','e','a','r','i','n','g','.','.','.',0x0a
+	clear_Table_l	EQU	12
 	align	2
 	
 psect	lcd_code,class=CODE
@@ -233,6 +237,35 @@ b_write_loop:	; Write loop for row 1 - brush size display
 	
 	return
 	
+c_write_start: 	; Write setup for row 1 - brush size display
+	lfsr	0, myArray	; Load FSR0 with address in RAM	
+	movlw	low highword(clear_Table)	; address of data in PM
+	movwf	TBLPTRU, A		; load upper bits to TBLPTRU
+	movlw	high(clear_Table)	; address of data in PM
+	movwf	TBLPTRH, A		; load high byte to TBLPTRH
+	movlw	low(clear_Table)	; address of data in PM
+	movwf	TBLPTRL, A		; load low byte to TBLPTRL
+	movlw	clear_Table_l	; bytes to read
+	movwf 	counter, A		; our counter register
+	return
+
+c_write_loop:	; Write loop for row 1 - brush size display
+	tblrd*+			; one byte from PM to TABLAT, increment TBLPRT
+	movff	TABLAT, POSTINC0; move data from TABLAT to (FSR0), inc FSR0	
+	decfsz	counter, A		; count down to zero
+	bra	c_write_loop		; keep going until finished
+		
+	movlw	clear_Table_l	; output message to UART
+	lfsr	2, myArray
+	call	UART_Transmit_Message
+
+	movlw	clear_Table_l	; output message to LCD
+	addlw	0xff		; don't send the final carriage return to LCD
+	lfsr	2, myArray
+	call	LCD_Write_Message
+	
+	return
+	
 d_write_start: 	; Write setup for row 2 - Status (Drawing...)
 	lfsr	0, myArray	; Load FSR0 with address in RAM	
 	movlw	low highword(draw_Table)	; address of data in PM
@@ -377,8 +410,8 @@ delay_2s:   ; 2s delay
 	movwf   third_delay_count ; triple nested delay
 	call    delay
 	return
-delay_1s:  ; 1s delay
-    	movlw   0x55
+delay_1s:  ; 0.5s delay
+    	movlw   0x42
 	movwf   delay_count
 	movlw   0xFF
 	movwf   second_delay_count
@@ -460,6 +493,15 @@ erasing:    ; Displays 'Erasing...' on LCD
 	call	e_write_loop
 	movlw	0x00
 	movwf	colour, A
+	return
+clearing_display:	    ; Displays 'Clearing...' on LCD
+	call	write_setup
+	call	LCD_Clear_Screen
+	movlw	0x1
+	call	LCD_delay_x4us
+	call	c_write_start
+	call	c_write_loop
+	call	delay_1s
 	return
 sending_display:		; Display when image is sent via UART
 	call	write_setup
