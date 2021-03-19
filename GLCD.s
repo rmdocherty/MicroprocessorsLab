@@ -129,7 +129,6 @@ GLCD_Set_Col:			    ; Given value in W go set that x value in GLCD
 	cpfsgt	Col_index, A	    ; if x > 63 goto RHS, else goto LHS 
 	goto	LHS
 	goto	RHS		    ; switch statement
-;	goto	LHS
 LHS:
 	bcf	LATB, GLCD_CS1, A  ; CS1 = 0, select chip 1
 	bsf	LATB, GLCD_CS2, A  ; CS2 = 1, deselect chip 2
@@ -329,15 +328,15 @@ Clear_screen_loop2:
 	goto	Clear_screen_loop2   ; If not loop
 	return
 
-GLCD_Send_Line:
+GLCD_Send_Line:		; First send_line loop --> for LHS correct
 	call	GLCD_Set_Row	    ; Go to row specified by WREG
 	movlw	0x00		    ; Reset clear counter here before beginning
 	movwf	Send_cnt
-	;bcf	LATB, GLCD_CS1, A  ; CS1 = 0
-	;bsf	LATB, GLCD_CS2, A  ; CS2 = 1
 Send_loop:
 	movf	Send_cnt, W
 	call	GLCD_Set_Col	    ; Set correct colum using send count
+	bcf	LATB, GLCD_CS1, A  ; CS1 = 0
+	bsf	LATB, GLCD_CS2, A  ; CS2 = 1
 	call	GLCD_Read	    ; Don't need to increment col as X incremented when Read called
 	movf	read_byte, W
 	call	UART_Transmit_Byte  ; Send data in W to port
@@ -346,8 +345,26 @@ Send_loop:
 	cpfseq	Send_cnt	    ; Only skip when Clear_cnt = 0x40
 	goto	Send_loop
 	return
+
+GLCD_Send_Line2:		; Second send_line loop --> for RHS correct
+	call	GLCD_Set_Row	    ; Go to row specified by WREG
+	movlw	0x00		    ; Reset clear counter here before beginning
+	movwf	Send_cnt
+Send_loop2:
+	movf	Send_cnt, W
+	call	GLCD_Set_Col	    ; Set correct colum using send count
+	bsf	LATB, GLCD_CS1, A  ; CS1 = 1
+	bcf	LATB, GLCD_CS2, A  ; CS2 = 0
+	call	GLCD_Read	    ; Don't need to increment col as X incremented when Read called
+	movf	read_byte, W
+	call	UART_Transmit_Byte  ; Send data in W to port
+	incf	Send_cnt, F, A	    ; Increment until we reach 0x40 = 64
+	movlw	0x80		    ; 0x40 = 64 or 0x3F = 63?
+	cpfseq	Send_cnt	    ; Only skip when Clear_cnt = 0x40
+	goto	Send_loop2
+	return
 	
-GLCD_Send_Screen:
+GLCD_Send_Screen:	; First screen sent - LHS correct
 	movlw	0x00		    ; Reset clear row counter
 	movwf	Send_cnt_2
 	movlw	's'		    ; the send byte so our python script knows when we've started transmitting
@@ -359,6 +376,15 @@ Send_screen_loop:
 	movlw	0x08		    ; 8 rows -> 8 times
 	cpfseq	Send_cnt_2	    ; Skip if eq to 8
 	goto	Send_screen_loop   ; If not loop
+	movlw	0x00		    ; Reset clear row counter
+	movwf	Send_cnt_2
+Send_screen_loop2:	; Second screen sent - RHS correct
+	movf	Send_cnt_2, W   ; Move current value to WREG, this is the row supplied to Clear_Line
+	call	GLCD_Send_Line2	    ; Clear given Line/row
+	incf	Send_cnt_2, F, A   ; Increment clear counter
+	movlw	0x08		    ; 8 rows -> 8 times
+	cpfseq	Send_cnt_2	    ; Skip if eq to 8
+	goto	Send_screen_loop2   ; If not loop
 	movlw	'f'		    ; the finished byte so scipt knows when finished
 	call	UART_Transmit_Byte  ; Send data in W to port
 	call	update_display
