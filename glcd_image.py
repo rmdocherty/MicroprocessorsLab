@@ -7,6 +7,12 @@ Created on Sat Mar 13 17:49:11 2021
 import serial
 import numpy as np
 from PIL import Image
+import os
+
+if os.name == 'nt':  #windows label = New Technology
+    COM_PORT = 'COM3'
+else:  #mac
+    COM_PORT = '/dev/tty.usbserial-AG0JH0GF'
 
 #%%
 
@@ -18,7 +24,7 @@ start_flag = False
 end_flag = False
 
 # with serial.Serial('COM3', 9600) as ser:  #open COM3 port
-with serial.Serial('/dev/tty.usbserial-AG0JH0GF', 9600) as ser:
+with serial.Serial(COM_PORT, 9600) as ser:
     while start_flag is False:  #transmission hasn't started yet
         x = ser.read()  #keep reading
         converted = int.from_bytes(x, "big")  #big endian
