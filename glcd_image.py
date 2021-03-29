@@ -8,6 +8,8 @@ import serial
 import numpy as np
 from PIL import Image
 import os
+import datetime
+import uuid
 
 if os.name == 'nt':  #windows label = New Technology
     COM_PORT = 'COM3'
@@ -123,7 +125,17 @@ RHS_list = blockshaped(image_arr2, 64, 64)
 
 image_arr = np.concatenate((LHS_list[0], RHS_list[1]), axis = 0)
 image_arr = (np.transpose(image_arr))
+image_arr = np.concatenate((image_arr[-8:, 0:127], image_arr[:-8, 0:127]), axis = 0)
 
 scaled = image_arr * 255  #255 = white, 0 = black (not 1/0 as expected)
 im = Image.fromarray(scaled, 'L')  #L here means 8 bit black and white
 im.show()
+
+"""
+Print time and UUID
+"""
+now = datetime.now()
+today = date.today()
+current_time = now.strftime("%H:%M:%S")
+print(f"Date and Time of Signature: {today}, {current_time}")
+print(f"UUID: {str(uuid.uuid4())}")
