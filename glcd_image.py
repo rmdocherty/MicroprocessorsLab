@@ -8,7 +8,8 @@ import serial
 import numpy as np
 from PIL import Image
 import os
-import datetime
+from datetime import datetime
+from datetime import date
 import uuid
 
 if os.name == 'nt':  #windows label = New Technology
@@ -31,14 +32,14 @@ with serial.Serial(COM_PORT, 9600) as ser:
         x = ser.read()  #keep reading
         converted = int.from_bytes(x, "big")  #big endian
         if x == b's':  #start flag
-            print("Begun recieving from UART!")
+            print("Begun receiving from UART!")
             start_flag = True
             byte_list.append(x)
     while end_flag is False:  #loop until we recieve the end byte, 'f'
         x = ser.read()
         byte_list.append(x)
         if x == b'f':
-            print("Finished recieving from UART!")
+            print("Finished receiving from UART!")
             end_flag = True
     ser.close()  #close port
 
